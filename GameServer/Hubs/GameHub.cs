@@ -30,7 +30,7 @@ namespace GameServer.Hubs
            return; 
            }
 
-           bool flag =gameState.MakeMove(Index,playerId);
+           bool flag =gameState.MakeMove(Index-1,playerId);
            if (flag)
             {
                 string nextTurn = (gameState.CurrentTurnPlayerId == gameState.PlayerX_Id) ? "X" : "O";
@@ -53,8 +53,6 @@ namespace GameServer.Hubs
         {
             var playerId = Context.ConnectionId;
             var opponentId = _manager.FindMatch(playerId);
-
-            await Clients.Caller.SendAsync("Activate");
 
             if (opponentId is null)
             {

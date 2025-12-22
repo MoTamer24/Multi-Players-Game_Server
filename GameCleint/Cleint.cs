@@ -35,17 +35,12 @@ namespace GameClient
                 Console.WriteLine($"[SERVER SAYS]: {message}");
             });
 
-            connection.On("Activate", () =>
-            {
-              Active=true;
-            });
             connection.On<string, char[], string>("GameStarted", (id, board, symbol) =>
                {
                    matchId = id;
                    MySymbol = symbol;
                
                    myTurn = (symbol == "X"); // X goes first
-
                    Console.Clear();
                    Console.WriteLine($"You are Player: {MySymbol}");
                    Tools.DisplayBoard(board);
@@ -59,7 +54,7 @@ namespace GameClient
                  // Only enable input if the server says it's MY turn
                  myTurn = (nextTurnSymbol == MySymbol);
 
-                 if (myTurn) Console.WriteLine("\n[YOUR TURN] Enter 0-8:");
+                 if (myTurn) Console.WriteLine("\n[YOUR TURN] Enter 1-9:");
                  else Console.WriteLine($"\n[WAITING] Opponent's turn...");
              });
             
@@ -70,6 +65,10 @@ namespace GameClient
                 if (WinnderId == connection.ConnectionId)
                 {
                     System.Console.WriteLine("YOU WON");
+                }
+                else if (WinnderId=="DRAW")
+                {
+                    System.Console.WriteLine("ITs DRAW");
                 }
                 else
                 {

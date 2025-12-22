@@ -16,11 +16,13 @@ while (true)
         {
             Console.WriteLine("Searching for opponent...");
             await client.FindMatch();
+            client.Active=true;
             break; // Exit menu loop, start game loop
         }
         else if (key == ConsoleKey.Q) return;
     }
 }
+
 while (client.Active)
 {
     if (client.myTurn)
@@ -33,7 +35,7 @@ while (client.Active)
         }
         else
         {
-            Console.WriteLine("Invalid input. Enter 0-8:");
+            Console.WriteLine("Invalid input. Enter 1-9:");
         }
     }
     else

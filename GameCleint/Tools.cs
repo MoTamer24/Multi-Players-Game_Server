@@ -4,7 +4,6 @@ namespace GameClient
     {
         public static void DisplayBoard(char[] board)
 {
-    Console.Clear(); // Clear old frames to prevent scrolling
     Console.WriteLine("\n --- TIC TAC TOE ---\n");
 
     // Row 1
