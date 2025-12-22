@@ -53,7 +53,6 @@ namespace GameServer.Hubs
                 await Clients.Group(matchId).SendAsync("BoardUpdate", gameState.Board, nextTurn);
                 if (gameState.IsGameOver)
                 {
-                    System.Console.WriteLine("gameoverflag");
                     await Clients.Group(matchId).SendAsync("GameOver",gameState.WinnerId);
                     _manager.DisconnectPlayer(gameState.PlayerO_Id);
                     _manager.DisconnectPlayer(gameState.PlayerX_Id);
