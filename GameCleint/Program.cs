@@ -1,26 +1,44 @@
-﻿// See https://aka.ms/new-console-template for more information
-using GameClient;
+﻿using GameClient;
 
-Console.WriteLine("Hello, World!");
+Console.WriteLine("--- TIC TAC TOE CLIENT ---");
+var client = new Client();
+await client.connect();
 
-var C = new Client();
-await C.connect();  
-await C.ping();
+// Phase 1: The Menu
+Console.WriteLine("\nPress 'F' to Find Match, or 'Q' to Quit.");
 while (true)
 {
-    var key=Console.ReadKey().Key;
-    if (key == ConsoleKey.Q)
+    // If we haven't found a match yet, show menu logic
+    if (string.IsNullOrEmpty(client.MySymbol)) 
     {
-        break;
-    }
-    else if (key==ConsoleKey.F)
-    {
-       await C.FindMatch();
-    }
-    else if (key==ConsoleKey.M)
-    {
-        await C.PingGroup();
+        var key = Console.ReadKey(true).Key; // 'true' hides the key press
+        if (key == ConsoleKey.F)
+        {
+            Console.WriteLine("Searching for opponent...");
+            await client.FindMatch();
+            break; // Exit menu loop, start game loop
+        }
+        else if (key == ConsoleKey.Q) return;
     }
 }
-
-Console.ReadKey();
+while (client.Active)
+{
+    if (client.myTurn)
+    {
+        string input = Console.ReadLine();
+        if (int.TryParse(input, out int moveIndex))
+        {
+            await client.MakeMove(moveIndex);
+            client.myTurn = false; // Lock input immediately after sending
+        }
+        else
+        {
+            Console.WriteLine("Invalid input. Enter 0-8:");
+        }
+    }
+    else
+    {
+        // IMPORTANT: Wait a bit so we don't crash the CPU
+        await Task.Delay(500); 
+    }
+}

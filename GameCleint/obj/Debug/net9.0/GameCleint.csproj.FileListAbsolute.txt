@@ -38,3 +38,4 @@
 /home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameCleint/obj/Debug/net9.0/GameCleint.pdb
 /home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameCleint/obj/Debug/net9.0/GameCleint.genruntimeconfig.cache
 /home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameCleint/obj/Debug/net9.0/ref/GameCleint.dll
+/home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameCleint/obj/Debug/net9.0/GameCleint.sourcelink.json

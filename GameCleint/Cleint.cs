@@ -1,15 +1,15 @@
-using System;
-using System.Threading.Tasks;
-using System.Windows;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.VisualBasic;
-
 namespace GameClient
 {
     public partial class Client
     {
         HubConnection connection;
+
         string? matchId;
+        public bool myTurn = false;
+        public bool Active=false;
+        public string? MySymbol { get; private set; }
         public Client()
         {
             connection = new HubConnectionBuilder()
@@ -35,13 +35,48 @@ namespace GameClient
                 Console.WriteLine($"[SERVER SAYS]: {message}");
             });
 
-            connection.On<string>("GameStarted", message =>
-           {
-               matchId=message;
-               Console.WriteLine($"[SERVER SAYS]: {message}");
-           });
+            connection.On("Activate", () =>
+            {
+              Active=true;
+            });
+            connection.On<string, char[], string>("GameStarted", (id, board, symbol) =>
+               {
+                   matchId = id;
+                   MySymbol = symbol;
+               
+                   myTurn = (symbol == "X"); // X goes first
 
+                   Console.Clear();
+                   Console.WriteLine($"You are Player: {MySymbol}");
+                   Tools.DisplayBoard(board);
+               });
 
+            connection.On<char[], string>("BoardUpdate", (board, nextTurnSymbol) =>
+             {
+                 Console.Clear();
+                 Tools.DisplayBoard(board);
+
+                 // Only enable input if the server says it's MY turn
+                 myTurn = (nextTurnSymbol == MySymbol);
+
+                 if (myTurn) Console.WriteLine("\n[YOUR TURN] Enter 0-8:");
+                 else Console.WriteLine($"\n[WAITING] Opponent's turn...");
+             });
+            
+            connection.On<string>("GameOver",WinnderId =>
+            {
+                Active=false;
+                System.Console.WriteLine($"Winner : {WinnderId}");
+                if (WinnderId == connection.ConnectionId)
+                {
+                    System.Console.WriteLine("YOU WON");
+                }
+                else
+                {
+                    System.Console.WriteLine("YOU LOST");
+                }
+            });
+            
             try
             {
                 await connection.StartAsync();
@@ -62,9 +97,9 @@ namespace GameClient
                 Console.WriteLine(ex.Message);
             }
         }
-        public async Task PingGroup()
+        public async Task MakeMove(int index)
         {
-            await connection.InvokeAsync("MakeMove","consider this a move",matchId);
+            await connection.InvokeAsync("MakeMove", index, matchId);
         }
         public async Task ping()
         {
