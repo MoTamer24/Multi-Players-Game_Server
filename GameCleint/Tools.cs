@@ -4,7 +4,6 @@ namespace GameClient
     {
         public static void DisplayBoard(char[] board)
 {
-    Console.WriteLine("\n --- TIC TAC TOE ---\n");
 
     // Row 1
     Console.WriteLine($"  {board[0]}  |  {board[1]}  |  {board[2]}  ");
@@ -20,8 +19,6 @@ namespace GameClient
     Console.WriteLine($"  {board[6]}  |  {board[7]}  |  {board[8]}  ");
     Console.WriteLine("     |     |     ");
     
-    Console.WriteLine("\n---------------------");
-    Console.WriteLine("Type a number (0-8) to move:");
 }
     }
     

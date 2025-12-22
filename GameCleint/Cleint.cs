@@ -60,7 +60,6 @@ namespace GameClient
             
             connection.On<string>("GameOver",WinnderId =>
             {
-                Active=false;
                 System.Console.WriteLine($"Winner : {WinnderId}");
                 if (WinnderId == connection.ConnectionId)
                 {
@@ -74,6 +73,7 @@ namespace GameClient
                 {
                     System.Console.WriteLine("YOU LOST");
                 }
+                Active=false;
             });
             
             try

@@ -44,3 +44,5 @@ while (client.Active)
         await Task.Delay(500); 
     }
 }
+    Console.WriteLine("Game Over. Press Enter to exit...");
+    Console.ReadLine();

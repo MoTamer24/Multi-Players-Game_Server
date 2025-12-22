@@ -8,6 +8,12 @@ namespace GameServer.Hubs
         {
             _manager = manager;
         }
+
+        public override Task OnDisconnectedAsync(Exception? exception)
+            {
+                 _manager.DisconnectPlayer(Context.ConnectionId);
+                return base.OnDisconnectedAsync(exception);
+            }
     
         public async Task Ping()
         {
@@ -30,6 +36,16 @@ namespace GameServer.Hubs
            return; 
            }
 
+            // check if players is still active online
+            var p1= _manager.IsActive(gameState.PlayerO_Id);
+            var p2= _manager.IsActive(gameState.PlayerX_Id);
+
+            if (!p1 || !p2)
+            {
+                await Clients.Caller.SendAsync("ReceiveMsg","you opponent has left");
+                await Clients.Group(matchId).SendAsync("GameOver",playerId);
+            }
+
            bool flag =gameState.MakeMove(Index-1,playerId);
            if (flag)
             {
@@ -37,17 +53,19 @@ namespace GameServer.Hubs
                 await Clients.Group(matchId).SendAsync("BoardUpdate", gameState.Board, nextTurn);
                 if (gameState.IsGameOver)
                 {
+                    System.Console.WriteLine("gameoverflag");
                     await Clients.Group(matchId).SendAsync("GameOver",gameState.WinnerId);
+                    _manager.DisconnectPlayer(gameState.PlayerO_Id);
+                    _manager.DisconnectPlayer(gameState.PlayerX_Id);
                 }
             }
             else{
-            await Clients.Caller.SendAsync("ReceiveMsg","you made something wrong");
+            string nextTurn = (gameState.CurrentTurnPlayerId == gameState.PlayerX_Id) ? "X" : "O";
+            await Clients.Group(matchId).SendAsync("BoardUpdate", gameState.Board, nextTurn);
+            await Clients.Caller.SendAsync("ReceiveMsg","you made something wrong , try again ");
+            
             }
         }
-
-
-
-
 
         public async Task FindMatch()
         {
@@ -61,6 +79,8 @@ namespace GameServer.Hubs
             }
             else
             {
+      
+
                 // creating groups 
                 var matchId = Guid.NewGuid().ToString();
                 await Groups.AddToGroupAsync(playerId, matchId);
