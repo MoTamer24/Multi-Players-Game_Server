@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "rF0nn3gvzTs=",
+  "dgSpecHash": "lTPuO/Pr7do=",
   "success": true,
   "projectFilePath": "/home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameCleint/GameCleint.csproj",
   "expectedPackageFiles": [
@@ -11,21 +11,13 @@
     "/home/motamerf/.nuget/packages/microsoft.aspnetcore.signalr.client.core/10.0.1/microsoft.aspnetcore.signalr.client.core.10.0.1.nupkg.sha512",
     "/home/motamerf/.nuget/packages/microsoft.aspnetcore.signalr.common/10.0.1/microsoft.aspnetcore.signalr.common.10.0.1.nupkg.sha512",
     "/home/motamerf/.nuget/packages/microsoft.aspnetcore.signalr.protocols.json/10.0.1/microsoft.aspnetcore.signalr.protocols.json.10.0.1.nupkg.sha512",
-    "/home/motamerf/.nuget/packages/microsoft.bcl.asyncinterfaces/10.0.1/microsoft.bcl.asyncinterfaces.10.0.1.nupkg.sha512",
-    "/home/motamerf/.nuget/packages/microsoft.bcl.timeprovider/10.0.1/microsoft.bcl.timeprovider.10.0.1.nupkg.sha512",
     "/home/motamerf/.nuget/packages/microsoft.extensions.dependencyinjection/10.0.1/microsoft.extensions.dependencyinjection.10.0.1.nupkg.sha512",
     "/home/motamerf/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/10.0.1/microsoft.extensions.dependencyinjection.abstractions.10.0.1.nupkg.sha512",
     "/home/motamerf/.nuget/packages/microsoft.extensions.features/10.0.1/microsoft.extensions.features.10.0.1.nupkg.sha512",
     "/home/motamerf/.nuget/packages/microsoft.extensions.logging/10.0.1/microsoft.extensions.logging.10.0.1.nupkg.sha512",
     "/home/motamerf/.nuget/packages/microsoft.extensions.logging.abstractions/10.0.1/microsoft.extensions.logging.abstractions.10.0.1.nupkg.sha512",
     "/home/motamerf/.nuget/packages/microsoft.extensions.options/10.0.1/microsoft.extensions.options.10.0.1.nupkg.sha512",
-    "/home/motamerf/.nuget/packages/microsoft.extensions.primitives/10.0.1/microsoft.extensions.primitives.10.0.1.nupkg.sha512",
-    "/home/motamerf/.nuget/packages/system.diagnostics.diagnosticsource/10.0.1/system.diagnostics.diagnosticsource.10.0.1.nupkg.sha512",
-    "/home/motamerf/.nuget/packages/system.io.pipelines/10.0.1/system.io.pipelines.10.0.1.nupkg.sha512",
-    "/home/motamerf/.nuget/packages/system.net.serversentevents/10.0.1/system.net.serversentevents.10.0.1.nupkg.sha512",
-    "/home/motamerf/.nuget/packages/system.text.encodings.web/10.0.1/system.text.encodings.web.10.0.1.nupkg.sha512",
-    "/home/motamerf/.nuget/packages/system.text.json/10.0.1/system.text.json.10.0.1.nupkg.sha512",
-    "/home/motamerf/.nuget/packages/system.threading.channels/10.0.1/system.threading.channels.10.0.1.nupkg.sha512"
+    "/home/motamerf/.nuget/packages/microsoft.extensions.primitives/10.0.1/microsoft.extensions.primitives.10.0.1.nupkg.sha512"
   ],
   "logs": []
 }

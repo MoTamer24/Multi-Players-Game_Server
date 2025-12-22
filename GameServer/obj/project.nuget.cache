@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "4yI9jEmyQ3I=",
+  "dgSpecHash": "SDVZGxLMf28=",
   "success": true,
   "projectFilePath": "/home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameServer/GameServer.csproj",
   "expectedPackageFiles": [
@@ -40,7 +40,8 @@
     "/home/motamerf/.nuget/packages/system.net.websockets.websocketprotocol/5.1.0/system.net.websockets.websocketprotocol.5.1.0.nupkg.sha512",
     "/home/motamerf/.nuget/packages/system.reflection.emit/4.7.0/system.reflection.emit.4.7.0.nupkg.sha512",
     "/home/motamerf/.nuget/packages/system.text.encodings.web/8.0.0/system.text.encodings.web.8.0.0.nupkg.sha512",
-    "/home/motamerf/.nuget/packages/system.threading.channels/8.0.0/system.threading.channels.8.0.0.nupkg.sha512"
+    "/home/motamerf/.nuget/packages/system.threading.channels/8.0.0/system.threading.channels.8.0.0.nupkg.sha512",
+    "/home/motamerf/.nuget/packages/microsoft.netcore.app.host.linux-x64/9.0.11/microsoft.netcore.app.host.linux-x64.9.0.11.nupkg.sha512"
   ],
   "logs": []
 }

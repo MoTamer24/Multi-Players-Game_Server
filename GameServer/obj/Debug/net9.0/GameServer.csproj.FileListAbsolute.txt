@@ -30,3 +30,4 @@
 /home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameServer/obj/Debug/net9.0/GameServer.genruntimeconfig.cache
 /home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameServer/obj/Debug/net9.0/ref/GameServer.dll
 /home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameServer/obj/Debug/net9.0/GameServer.sourcelink.json
+/home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameServer/obj/Debug/net9.0/swae.build.ex.cache
