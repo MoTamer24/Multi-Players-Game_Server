@@ -1,26 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "/home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameCleint/GameCleint.csproj": {}
+    "/home/mohamed/Desktop/Game Server/GameCleint/GameCleint.csproj": {}
   },
   "projects": {
-    "/home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameCleint/GameCleint.csproj": {
+    "/home/mohamed/Desktop/Game Server/GameCleint/GameCleint.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameCleint/GameCleint.csproj",
+        "projectUniqueName": "/home/mohamed/Desktop/Game Server/GameCleint/GameCleint.csproj",
         "projectName": "GameCleint",
-        "projectPath": "/home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameCleint/GameCleint.csproj",
-        "packagesPath": "/home/motamerf/.nuget/packages/",
-        "outputPath": "/home/motamerf/MoRoom/Play_Ground/Projects/Game Server/GameCleint/obj/",
+        "projectPath": "/home/mohamed/Desktop/Game Server/GameCleint/GameCleint.csproj",
+        "packagesPath": "/home/mohamed/.nuget/packages/",
+        "outputPath": "/home/mohamed/Desktop/Game Server/GameCleint/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/motamerf/.nuget/NuGet/NuGet.Config"
+          "/home/mohamed/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
-          "/usr/lib/dotnet/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -66,7 +65,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/10.0.100/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "/home/mohamed/.dotnet/sdk/10.0.100/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",

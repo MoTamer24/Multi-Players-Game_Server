@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameHub | منصة الألعاب</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+</head>
+<body>
+
+    <div id="loginScreen" class="overlay-screen">
+        <div class="form-card">
+            <h2 class="neon-text">GAME HUB</h2>
+            <p>سجل دخولك للبدء</p>
+            <input type="text" id="username" placeholder="اسم المستخدم..." autocomplete="off">
+            <button onclick="showServers()">دخول المنصة</button>
+        </div>
+    </div>
+
+    <div id="serverScreen" class="overlay-screen" style="display: none;">
+        <div class="form-card">
+            <h2>اختر غرفة اللعب</h2>
+            <div class="server-list" id="serverList">
+                <div class="server-item" onclick="joinServer('سيرفر القاهرة')">
+                    <span>سيرفر القاهرة</span>
+                    <span class="badge">3/10</span>
+                </div>
+                <div class="server-item" onclick="joinServer('سيرفر المطورين')">
+                    <span>سيرفر المطورين</span>
+                    <span class="badge">1/10</span>
+                </div>
+            </div>
+            <div class="divider">أو أنشئ غرفتك الخاصة</div>
+            <input type="text" id="serverName" placeholder="اسم الغرفة الجديدة">
+            <button class="secondary" onclick="createServer()">إنشاء وانضمام</button>
+        </div>
+    </div>
+
+    <div id="mainGame" class="container" style="display: none;">
+        <main class="game-area">
+            <div class="room-info">الغرفة: <span id="currentRoomName">-</span></div>
+            <div class="status" id="status">انتظر دورك...</div>
+            <div class="board" id="board">
+                <div class="cell" data-index="0"></div>
+                <div class="cell" data-index="1"></div>
+                <div class="cell" data-index="2"></div>
+                <div class="cell" data-index="3"></div>
+                <div class="cell" data-index="4"></div>
+                <div class="cell" data-index="5"></div>
+                <div class="cell" data-index="6"></div>
+                <div class="cell" data-index="7"></div>
+                <div class="cell" data-index="8"></div>
+            </div>
+            <button id="resetBtn">إعادة ضبط اللعبة</button>
+        </main>
+
+        <aside class="chat-container">
+            <div class="chat-header">المحادثة المباشرة</div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input">
+                <input type="text" id="msgInput" placeholder="اكتب رسالتك...">
+                <button id="sendBtn">إرسال</button>
+            </div>
+        </aside>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
