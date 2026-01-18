@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Universal Game Client</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        
+        /* SCREENS */
+        #lobby-screen { display: block; }
+        #game-screen { display: none; }
+        
+        /* BOARDS */
+        .board-container { display: flex; justify-content: center; margin-top: 20px; }
+        
+        /* Tic Tac Toe Styles */
+        .xo-grid { display: grid; grid-template-columns: repeat(3, 100px); gap: 5px; }
+        .xo-cell {
+            width: 100px; height: 100px; background: #eee; font-size: 40px; 
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .xo-cell:hover { background: #ddd; }
+        
+        /* Status Bar */
+        #status-bar { font-weight: bold; margin: 10px; padding: 10px; background: #f0f0f0; }
+        .my-turn { color: green; border: 2px solid green; }
+        .wait-turn { color: orange; }
+    </style>
+</head>
+<body>
+
+    <h1>🎮 Game Server Client</h1>
+
+    <div id="lobby-screen">
+        <h3>Choose a Game</h3>
+        <button onclick="findMatch(0)">Play Tic-Tac-Toe</button>
+        <button onclick="findMatch(1)">Play Chess (Experimental)</button>
+        <p id="lobby-status">Not Connected...</p>
+    </div>
+
+    <div id="game-screen">
+        <div id="status-bar" class="wait-turn">Connecting...</div>
+        <div id="board-area" class="board-container">
+            </div>
+        <br>
+        <button onclick="leaveGame()">Quit Game</button>
+    </div>
+
+    <script>
+        // --- 1. CONFIGURATION & STATE ---
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("http://localhost:5024/Hub") // YOUR SERVER URL HERE
+            .build();
+
+        let currentMatchId = null;
+        let isMyTurn = false;
+        let currentGameType = null; // 0 = XO, 1 = Chess
+
+        // --- 2. RENDERER STRATEGY ---
+        // This is the JS equivalent of your C# "IGameRenderer"
+        const Renderers = {
+            // TIC TAC TOE RENDERER
+            0: {
+                render: (boardData) => {
+                    const container = document.getElementById("board-area");
+                    container.innerHTML = "";
+                    const grid = document.createElement("div");
+                    grid.className = "xo-grid";
+
+                    // boardData comes as an array ["-", "X", "-", ...]
+                    boardData.forEach((cell, index) => {
+                        const div = document.createElement("div");
+                        div.className = "xo-cell";
+                        div.innerText = cell === '-' ? '' : cell;
+                        div.onclick = () => sendMove(index); // XO sends 'int'
+                        grid.appendChild(div);
+                    });
+                    container.appendChild(grid);
+                }
+            },
+            // CHESS RENDERER (Placeholder for now)
+            1: {
+                render: (boardData) => {
+                    const container = document.getElementById("board-area");
+                    container.innerHTML = "<div style='border:1px solid black; padding:20px'>Chess Board would go here.<br>Current State: " + JSON.stringify(boardData) + "</div>";
+                }
+            }
+        };
+
+        // --- 3. SIGNALR EVENT HANDLERS ---
+
+        connection.on("ReceiveMsg", (msg) => {
+            console.log("[SERVER]:", msg);
+            document.getElementById("lobby-status").innerText = msg;
+        });
+
+        // "GameStarted" -> Switch UI to Game Mode
+        connection.on("GameStarted", (matchId, board, firstPlayerId) => {
+            currentMatchId = matchId;
+            isMyTurn = (firstPlayerId === connection.connectionId);
+            
+            toggleScreen(true);
+            updateStatusUI();
+            
+            // Use the correct renderer!
+            Renderers[currentGameType].render(board);
+        });
+
+        // "BoardUpdate" -> Re-draw the board
+        connection.on("BoardUpdate", (board, nextPlayerId) => {
+            isMyTurn = (nextPlayerId === connection.connectionId);
+            updateStatusUI();
+            Renderers[currentGameType].render(board);
+        });
+
+        connection.on("GameOver", (winnerId) => {
+            let msg = (winnerId === connection.connectionId) ? "YOU WON! 🎉" : "YOU LOST 💀";
+            if(winnerId === "DRAW") msg = "IT'S A DRAW 🤝";
+            
+            document.getElementById("status-bar").innerText = msg;
+            alert(msg);
+            leaveGame();
+        });
+
+        // --- 4. CORE FUNCTIONS ---
+
+        async function start() {
+            try {
+                await connection.start();
+                document.getElementById("lobby-status").innerText = "Connected to Server";
+            } catch (err) {
+                console.error(err);
+                setTimeout(start, 5000);
+            }
+        }
+
+        async function findMatch(type) {
+            currentGameType = type;
+            document.getElementById("lobby-status").innerText = "Searching for opponent...";
+            // Send Enum as Integer (0 or 1)
+            await connection.invoke("FindMatch", type);
+        }
+
+        async function sendMove(moveData) {
+            if (!isMyTurn) return; // Prevent clicking when not your turn
+            
+            try {
+                // 'moveData' is generic: 
+                // For XO, it's an integer (index).
+                // For Chess, it will be an object { from: "e2", to: "e4" }
+                await connection.invoke("MakeMove", moveData, currentMatchId);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // --- 5. UI HELPERS ---
+
+        function updateStatusUI() {
+            const statusDiv = document.getElementById("status-bar");
+            if (isMyTurn) {
+                statusDiv.innerText = "YOUR TURN";
+                statusDiv.className = "my-turn";
+            } else {
+                statusDiv.innerText = "Waiting for opponent...";
+                statusDiv.className = "wait-turn";
+            }
+        }
+
+        function toggleScreen(inGame) {
+            document.getElementById("lobby-screen").style.display = inGame ? "none" : "block";
+            document.getElementById("game-screen").style.display = inGame ? "block" : "none";
+        }
+
+        function leaveGame() {
+            currentMatchId = null;
+            toggleScreen(false);
+            document.getElementById("lobby-status").innerText = "Game finished.";
+        }
+
+        // Start connection on load
+        start();
+
+    </script>
+</body>
+</html>

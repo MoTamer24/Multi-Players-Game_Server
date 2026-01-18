@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+
 namespace GameServer.Hubs
 {
     class GameHub : Hub
@@ -10,95 +11,64 @@ namespace GameServer.Hubs
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)
-            {
-                 _manager.DisconnectPlayer(Context.ConnectionId);
-                return base.OnDisconnectedAsync(exception);
-            }
-    
-        public async Task Ping()
         {
-            Console.WriteLine("there is something");
-            var connId = Context.ConnectionId;
-            // sendAsync(a signal for the cleint , mesage or arguments)
-            await Clients.All.SendAsync("Ping", $"Player {Context.ConnectionId} connected");
-        }
-      
-      
-
-        public async Task MakeMove(int Index, string matchId)
-        {
-           var playerId = Context.ConnectionId;
-           var gameState=_manager.GetGameState(matchId);
-
-           if (gameState is null )
-           {
-           await Clients.Caller.SendAsync("ReceiveMsg","Server Error");
-           return; 
-           }
-
-            // check if players is still active online
-            var p1= _manager.IsActive(gameState.PlayerO_Id);
-            var p2= _manager.IsActive(gameState.PlayerX_Id);
-
-            if (!p1 || !p2)
-            {
-                await Clients.Caller.SendAsync("ReceiveMsg","you opponent has left");
-                await Clients.Group(matchId).SendAsync("GameOver",playerId);
-            }
-
-           bool flag =gameState.MakeMove(Index-1,playerId);
-           if (flag)
-            {
-                string nextTurn = (gameState.CurrentTurnPlayerId == gameState.PlayerX_Id) ? "X" : "O";
-                await Clients.Group(matchId).SendAsync("BoardUpdate", gameState.Board, nextTurn);
-                if (gameState.IsGameOver)
-                {
-                    await Clients.Group(matchId).SendAsync("GameOver",gameState.WinnerId);
-                    _manager.DisconnectPlayer(gameState.PlayerO_Id);
-                    _manager.DisconnectPlayer(gameState.PlayerX_Id);
-                }
-            }
-            else{
-            string nextTurn = (gameState.CurrentTurnPlayerId == gameState.PlayerX_Id) ? "X" : "O";
-            await Clients.Group(matchId).SendAsync("BoardUpdate", gameState.Board, nextTurn);
-            await Clients.Caller.SendAsync("ReceiveMsg","you made something wrong , try again ");
-            
-            }
+            _manager.DisconnectPlayer(Context.ConnectionId);
+            return base.OnDisconnectedAsync(exception);
         }
 
-        public async Task FindMatch()
+        public async Task MakeMove(object movedata, string matchId)
         {
             var playerId = Context.ConnectionId;
-            var opponentId = _manager.FindMatch(playerId);
+            var gameState = _manager.GetGameState(matchId);
 
-            if (opponentId is null)
+            if (gameState is null)
             {
-                // caller ?? i think this means return to the user 
-                await Clients.Caller.SendAsync("ReceiveMsg", "You are on waiting list");
+                await Clients.Caller.SendAsync("ReceiveMsg", "Server Error: Game not found");
+                return;
+            }
+
+            var moveResult = gameState.MakeMove(playerId, movedata);
+            
+            if (moveResult.Success)
+            {
+                // Send the updated board to everyone
+                await Clients.Group(matchId).SendAsync("BoardUpdate", gameState.GetBoardState(), gameState.CurrentTurnPlayerId);
+
+                if (gameState.IsGameOver)
+                {
+                    await Clients.Group(matchId).SendAsync("GameOver", gameState.WinnerId);
+                }
             }
             else
             {
-      
+                await Clients.Caller.SendAsync("BoardUpdate", gameState.GetBoardState(), gameState.CurrentTurnPlayerId);
+                await Clients.Caller.SendAsync("ReceiveMsg", moveResult.ErrorMessage);
+            }
+        }
 
-                // creating groups 
+        public async Task FindMatch(GameType type)
+        {
+            var playerId = Context.ConnectionId;
+            var opponentId = _manager.FindMatch(type, playerId);
+
+            if (opponentId is null)
+            {
+                await Clients.Caller.SendAsync("ReceiveMsg", "You are on waiting list...");
+            }
+            else
+            {
                 var matchId = Guid.NewGuid().ToString();
+                
                 await Groups.AddToGroupAsync(playerId, matchId);
                 await Groups.AddToGroupAsync(opponentId, matchId);
-                // Creating Game state 
-                _manager.CreateGame(matchId,playerId,opponentId);
-
-
+                
+                _manager.CreateGame(matchId, type, playerId, opponentId);
                 var game = _manager.GetGameState(matchId);
-                // telling the players
-              
-                // Tell Player 1 they are X
-            
-                await Clients.Client(playerId).SendAsync("GameStarted", matchId, game.Board, "X");
-                await Clients.Client(opponentId).SendAsync("GameStarted", matchId, game.Board, "O");
-                await Clients.Group(matchId).SendAsync("ReceiveMsg", "opponenet found , match started");
-               
+
+                await Clients.Group(matchId).SendAsync("GameStarted", matchId, game.GetBoardState(), game.CurrentTurnPlayerId);
+                
+                await Clients.Group(matchId).SendAsync("ReceiveMsg", "Match Found! Game Started.");
             }
         }
     }
-
 }

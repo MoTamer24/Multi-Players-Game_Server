@@ -2,7 +2,12 @@
 
 namespace GameServer
 {
-    public class GameState
+    public abstract class GameState
+    {
+        
+        
+    }
+    public class XOGameState
     {
         // 'X' or 'O' or '-' (empty)
         public char[] Board { get; private set; } 
@@ -12,7 +17,7 @@ namespace GameServer
         public bool IsGameOver { get; private set; } = false;
         public string? WinnerId { get; private set; } = null; // Null means no winner yet
 
-        public GameState(string xPlayerId, string oPlayerId)
+        public XOGameState(string xPlayerId, string oPlayerId)
         {
             PlayerX_Id = xPlayerId;
             PlayerO_Id = oPlayerId;
