@@ -5,10 +5,13 @@ public interface IGame
     string CurrentTurnPlayerId { get; }
     bool IsGameOver { get; }
     string? WinnerId { get; }
-    
+
+    // Transfer any internal references from oldUserId to newUserId (used for guest->user linking)
+    void TransferOwnership(string oldUserId, string newUserId);
+
     // Returns the board state as a generic object (XO sends char[], Chess sends generic FEN string or 2D array)
     object GetBoardState();
-    
+
     // The core logic. Takes a generic move and the player trying to make it.
     MoveResult MakeMove(string playerId, object moveData);  // object ?
 }
