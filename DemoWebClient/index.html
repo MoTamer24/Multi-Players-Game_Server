@@ -3,185 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <title>Universal Game Client</title>
+    <!-- Dependencies -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px; background: #f0f2f5; color: #1c1e21; }
         
-        /* SCREENS */
-        #lobby-screen { display: block; }
+        /* LAYOUT CARDS */
+        .card { max-width: 420px; margin: 40px auto; padding: 32px; background: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        
+        /* AUTH UI */
+        .auth-input { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid #dddfe2; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
+        .btn-primary { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 16px; transition: background 0.2s; }
+        .btn-primary:hover { background: #0069d9; }
+        .divider { margin: 24px 0; border-bottom: 1px solid #dadde1; position: relative; }
+        .divider::after { content: 'OR'; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: white; padding: 0 12px; color: #8a8d91; font-size: 12px; font-weight: bold; }
+
+        /* SCREENS VISIBILITY */
+        #auth-screen { display: block; }
+        #lobby-screen { display: none; }
         #game-screen { display: none; }
         
-        /* BOARDS */
-        .board-container { display: flex; justify-content: center; margin-top: 20px; }
-        
-        /* Tic Tac Toe Styles */
-        .xo-grid { display: grid; grid-template-columns: repeat(3, 100px); gap: 5px; }
+        /* GAME BOARDS */
+        .board-container { display: flex; justify-content: center; margin-top: 24px; }
+        .xo-grid { display: grid; grid-template-columns: repeat(3, 100px); gap: 10px; }
         .xo-cell {
-            width: 100px; height: 100px; background: #eee; font-size: 40px; 
+            width: 100px; height: 100px; background: white; font-size: 48px; font-weight: bold;
             display: flex; align-items: center; justify-content: center; cursor: pointer;
+            border: 2px solid #e4e6eb; border-radius: 8px; transition: 0.2s;
         }
-        .xo-cell:hover { background: #ddd; }
+        .xo-cell:hover { background: #f2f3f5; border-color: #007bff; }
         
-        /* Status Bar */
-        #status-bar { font-weight: bold; margin: 10px; padding: 10px; background: #f0f0f0; }
-        .my-turn { color: green; border: 2px solid green; }
-        .wait-turn { color: orange; }
+        /* STATUS BAR */
+        #status-bar { font-weight: bold; margin: 20px auto; padding: 15px; border-radius: 8px; max-width: 350px; }
+        .my-turn { background: #e7f3ff; color: #1877f2; border: 1px solid #1877f2; }
+        .wait-turn { background: #f2f3f5; color: #65676b; border: 1px solid #ddd; }
+        
+        .error-msg { color: #d73a49; font-size: 13px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <h1>🎮 Game Server Client</h1>
+    <h1>🎮 Game Server</h1>
 
-    <div id="lobby-screen">
-        <h3>Choose a Game</h3>
-        <button onclick="findMatch(0)">Play Tic-Tac-Toe</button>
-        <button onclick="findMatch(1)">Play Chess (Experimental)</button>
-        <p id="lobby-status">Not Connected...</p>
+    <!-- 1. AUTH SCREEN -->
+    <div id="auth-screen" class="card">
+        <h3>Login</h3>
+        <p style="color: #65676b; font-size: 14px; margin-bottom: 20px;">Choose how you want to play</p>
+        
+        <input type="text" id="guestName" class="auth-input" placeholder="Guest Display Name">
+        <button class="btn-primary" onclick="loginAsGuest()">Play as Guest</button>
+        
+        <div class="divider"></div>
+        
+        <!-- Google Sign-In Button -->
+        <div id="g_id_onload"
+             data-client_id="924063946571-b7ior02olimra53kbvpo2nrkp949o4tm.apps.googleusercontent.com"
+             data-callback="handleGoogleLogin">
+        </div>
+        <div class="g_id_signin" data-type="standard" data-size="large" data-width="356"></div>
+        
+        <p id="auth-error" class="error-msg"></p>
     </div>
 
+    <!-- 2. LOBBY SCREEN -->
+    <div id="lobby-screen" class="card">
+        <h3 id="welcome-txt">Welcome!</h3>
+        <p id="lobby-status" style="font-size: 14px; color: #666;">Ready to play</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+            <button class="btn-primary" onclick="findMatch(0)">Play Tic-Tac-Toe</button>
+            <button class="btn-primary" style="background: #6c757d;" onclick="findMatch(1)">Play Chess (Experimental)</button>
+        </div>
+        
+        <button onclick="logout()" style="margin-top: 25px; background: none; border: none; color: #007bff; cursor: pointer; text-decoration: underline;">Switch Account</button>
+    </div>
+
+    <!-- 3. GAME SCREEN -->
     <div id="game-screen">
-        <div id="status-bar" class="wait-turn">Connecting...</div>
-        <div id="board-area" class="board-container">
-            </div>
+        <div id="status-bar" class="wait-turn">Connecting to game...</div>
+        <div id="board-area" class="board-container"></div>
         <br>
-        <button onclick="leaveGame()">Quit Game</button>
+        <button onclick="leaveGame()" style="padding: 10px 20px; border-radius: 6px; border: 1px solid #ccc; cursor: pointer;">Quit Match</button>
     </div>
 
     <script>
-        // --- 1. CONFIGURATION & STATE ---
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl("http://localhost:5024/Hub") // YOUR SERVER URL HERE
-            .build();
-
+        // --- CONFIGURATION ---
+        const API_BASE = "http://localhost:5024/api/auth";
+        const HUB_URL = "http://localhost:5024/Hub";
+        
+        let connection = null;
+        let userToken = localStorage.getItem("game_token");
+        let myUserId = null;   // Permanent User ID from Token
+        let myDisplayName = null;
+        
         let currentMatchId = null;
         let isMyTurn = false;
-        let currentGameType = null; // 0 = XO, 1 = Chess
+        let currentGameType = 0;
 
-        // --- 2. RENDERER STRATEGY ---
-        // This is the JS equivalent of your C# "IGameRenderer"
+        // --- HIGH PERFORMANCE JWT PARSER ---
+        // Decodes the token payload instantly without a network call
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                console.error("JWT Parse Error", e);
+                return null;
+            }
+        }
+
+        // --- AUTHENTICATION ---
+
+        async function loginAsGuest() {
+            const name = document.getElementById("guestName").value || "Guest";
+            try {
+                const res = await fetch(`${API_BASE}/guest`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ displayName: name })
+                });
+                const data = await res.json();
+                handleAuthSuccess(data.token);
+            } catch (err) {
+                document.getElementById("auth-error").innerText = "Auth Server Unreachable.";
+            }
+        }
+
+        async function handleGoogleLogin(response) {
+            try {
+                const res = await fetch(`${API_BASE}/google`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(response.credential)
+                });
+                const data = await res.json();
+                handleAuthSuccess(data.token);
+            } catch (err) {
+                document.getElementById("auth-error").innerText = "Google Login Failed.";
+            }
+        }
+
+        function handleAuthSuccess(token) {
+            userToken = token;
+            localStorage.setItem("game_token", token);
+            
+            // Instantly extract ID and Name from the token
+            const payload = parseJwt(token);
+            if (payload) {
+                myUserId = payload.uid; // Must match 'uid' claim in C#
+                myDisplayName = payload.unique_name || "Player";
+                document.getElementById("welcome-txt").innerText = `Welcome, ${myDisplayName}`;
+            }
+
+            toggleScreen("lobby-screen");
+            startSignalR();
+        }
+
+        function logout() {
+            localStorage.removeItem("game_token");
+            location.reload();
+        }
+
+        // --- SIGNALR (GAMEPLAY) ---
+
+        async function startSignalR() {
+            if (connection) await connection.stop();
+
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl(HUB_URL, { accessTokenFactory: () => userToken })
+                .withAutomaticReconnect()
+                .build();
+
+            // When a game is found/started
+            connection.on("GameStarted", (matchId, board, firstPlayerUserId) => {
+                currentMatchId = matchId;
+                // FIX: Compare against permanent User ID, not socket ID
+                isMyTurn = (firstPlayerUserId === myUserId);
+                
+                toggleScreen("game-screen");
+                updateStatusUI();
+                renderBoard(board);
+            });
+
+            // When a move is made
+            connection.on("BoardUpdate", (board, nextPlayerUserId) => {
+                isMyTurn = (nextPlayerUserId === myUserId);
+                updateStatusUI();
+                renderBoard(board);
+            });
+
+            connection.on("GameOver", (winnerUserId) => {
+                let msg = (winnerUserId === myUserId) ? "🏆 VICTORY!" : "💀 DEFEAT";
+                if(winnerUserId === "DRAW") msg = "🤝 DRAW";
+                alert(msg);
+                leaveGame();
+            });
+
+            connection.on("ReceiveMsg", (msg) => {
+                document.getElementById("lobby-status").innerText = msg;
+            });
+
+            try {
+                await connection.start();
+                document.getElementById("lobby-status").innerText = "Connected & Ready";
+            } catch (err) {
+                document.getElementById("lobby-status").innerText = "Connection Failed.";
+            }
+        }
+
+        // --- UI RENDERING ---
+
         const Renderers = {
-            // TIC TAC TOE RENDERER
-            0: {
-                render: (boardData) => {
-                    const container = document.getElementById("board-area");
-                    container.innerHTML = "";
-                    const grid = document.createElement("div");
-                    grid.className = "xo-grid";
+            0: (boardData) => { // Tic Tac Toe
+                const container = document.getElementById("board-area");
+                container.innerHTML = "";
+                const grid = document.createElement("div");
+                grid.className = "xo-grid";
 
-                    // boardData comes as an array ["-", "X", "-", ...]
-                    boardData.forEach((cell, index) => {
-                        const div = document.createElement("div");
-                        div.className = "xo-cell";
-                        div.innerText = cell === '-' ? '' : cell;
-                        div.onclick = () => sendMove(index); // XO sends 'int'
-                        grid.appendChild(div);
-                    });
-                    container.appendChild(grid);
-                }
+                boardData.forEach((cell, index) => {
+                    const div = document.createElement("div");
+                    div.className = "xo-cell";
+                    div.innerText = cell === '-' ? '' : cell;
+                    div.style.color = cell === 'X' ? '#007bff' : '#dc3545';
+                    div.onclick = () => {
+                        if (isMyTurn) connection.invoke("MakeMove", index, currentMatchId);
+                    };
+                    grid.appendChild(div);
+                });
+                container.appendChild(grid);
             },
-            // CHESS RENDERER (Placeholder for now)
-            1: {
-                render: (boardData) => {
-                    const container = document.getElementById("board-area");
-                    container.innerHTML = "<div style='border:1px solid black; padding:20px'>Chess Board would go here.<br>Current State: " + JSON.stringify(boardData) + "</div>";
-                }
+            1: (boardData) => { // Chess Placeholder
+                document.getElementById("board-area").innerHTML = "<div>Chess Board Logic Here</div>";
             }
         };
 
-        // --- 3. SIGNALR EVENT HANDLERS ---
+        function renderBoard(data) {
+            Renderers[currentGameType](data);
+        }
 
-        connection.on("ReceiveMsg", (msg) => {
-            console.log("[SERVER]:", msg);
-            document.getElementById("lobby-status").innerText = msg;
-        });
+        function updateStatusUI() {
+            const bar = document.getElementById("status-bar");
+            bar.innerText = isMyTurn ? "YOUR TURN" : "Opponent is thinking...";
+            bar.className = isMyTurn ? "my-turn" : "wait-turn";
+        }
 
-        // "GameStarted" -> Switch UI to Game Mode
-        connection.on("GameStarted", (matchId, board, firstPlayerId) => {
-            currentMatchId = matchId;
-            isMyTurn = (firstPlayerId === connection.connectionId);
-            
-            toggleScreen(true);
-            updateStatusUI();
-            
-            // Use the correct renderer!
-            Renderers[currentGameType].render(board);
-        });
-
-        // "BoardUpdate" -> Re-draw the board
-        connection.on("BoardUpdate", (board, nextPlayerId) => {
-            isMyTurn = (nextPlayerId === connection.connectionId);
-            updateStatusUI();
-            Renderers[currentGameType].render(board);
-        });
-
-        connection.on("GameOver", (winnerId) => {
-            let msg = (winnerId === connection.connectionId) ? "YOU WON! 🎉" : "YOU LOST 💀";
-            if(winnerId === "DRAW") msg = "IT'S A DRAW 🤝";
-            
-            document.getElementById("status-bar").innerText = msg;
-            alert(msg);
-            leaveGame();
-        });
-
-        // --- 4. CORE FUNCTIONS ---
-
-        async function start() {
-            try {
-                await connection.start();
-                document.getElementById("lobby-status").innerText = "Connected to Server";
-            } catch (err) {
-                console.error(err);
-                setTimeout(start, 5000);
-            }
+        function toggleScreen(screenId) {
+            document.getElementById("auth-screen").style.display = (screenId === "auth-screen") ? "block" : "none";
+            document.getElementById("lobby-screen").style.display = (screenId === "lobby-screen") ? "block" : "none";
+            document.getElementById("game-screen").style.display = (screenId === "game-screen") ? "block" : "none";
         }
 
         async function findMatch(type) {
             currentGameType = type;
-            document.getElementById("lobby-status").innerText = "Searching for opponent...";
-            // Send Enum as Integer (0 or 1)
+            document.getElementById("lobby-status").innerText = "Finding opponent...";
             await connection.invoke("FindMatch", type);
-        }
-
-        async function sendMove(moveData) {
-            if (!isMyTurn) return; // Prevent clicking when not your turn
-            
-            try {
-                // 'moveData' is generic: 
-                // For XO, it's an integer (index).
-                // For Chess, it will be an object { from: "e2", to: "e4" }
-                await connection.invoke("MakeMove", moveData, currentMatchId);
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        // --- 5. UI HELPERS ---
-
-        function updateStatusUI() {
-            const statusDiv = document.getElementById("status-bar");
-            if (isMyTurn) {
-                statusDiv.innerText = "YOUR TURN";
-                statusDiv.className = "my-turn";
-            } else {
-                statusDiv.innerText = "Waiting for opponent...";
-                statusDiv.className = "wait-turn";
-            }
-        }
-
-        function toggleScreen(inGame) {
-            document.getElementById("lobby-screen").style.display = inGame ? "none" : "block";
-            document.getElementById("game-screen").style.display = inGame ? "block" : "none";
         }
 
         function leaveGame() {
             currentMatchId = null;
-            toggleScreen(false);
-            document.getElementById("lobby-status").innerText = "Game finished.";
+            toggleScreen("lobby-screen");
         }
 
-        // Start connection on load
-        start();
-
+        // Check for session on load
+        window.onload = () => {
+            if (userToken) handleAuthSuccess(userToken);
+        };
     </script>
 </body>
 </html>

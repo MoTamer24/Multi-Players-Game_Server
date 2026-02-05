@@ -40,7 +40,7 @@ builder.Services.AddCors(options =>
 });
 
 // Authentication - application JWTs (guests + exchanged IdP users)
-var jwtKey = Environment.GetEnvironmentVariable("APP_JWT_SIGNING_KEY");
+var jwtKey = config["JWT:SigningKey"];
 if (string.IsNullOrEmpty(jwtKey))
 {
     // Development fallback (not for production)

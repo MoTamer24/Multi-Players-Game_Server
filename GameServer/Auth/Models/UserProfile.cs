@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GameServer.Auth.Models
 {
-    //< Tamer > wht is this 
+    //< Tamer > data annotation to tell DB unique composite of Provider and pid 
     [Index(nameof(Provider), nameof(ProviderId), IsUnique = true)]
     public class UserProfile
     {

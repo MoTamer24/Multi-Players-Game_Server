@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+
 using GameServer.Auth.Models;
 
 namespace GameServer.Auth

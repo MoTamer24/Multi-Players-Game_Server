@@ -7,9 +7,7 @@ public static class AuthConstants
     public  static TokenValidationParameters GetAuthParameters(IConfiguration cfg)
     {
 
-        var key = Environment.GetEnvironmentVariable("APP_JWT_SIGNING_KEY")
-                      ?? cfg["AppJwt:SigningKey"]
-                      ?? cfg["Jwt:SigningKey"];
+        var key = cfg["Jwt:SigningKey"];
             if (string.IsNullOrEmpty(key))
                 throw new InvalidOperationException("APP_JWT_SIGNING_KEY is not configured");
 

@@ -7,6 +7,7 @@ namespace GameServer
         ConcurrentDictionary<GameType, ConcurrentQueue<string>> WaitingPlayers;
 
         // Map userId -> set of connectionIds
+        // if a player have many cleints
         ConcurrentDictionary<string, ConcurrentDictionary<string, bool>> _userConnections;
 
         // Games keyed by matchId
@@ -124,3 +125,6 @@ namespace GameServer
         }
     }
 }
+
+ 
+     

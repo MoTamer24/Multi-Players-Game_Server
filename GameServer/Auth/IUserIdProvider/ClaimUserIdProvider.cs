@@ -7,7 +7,6 @@ namespace GameServer.Auth
     {
         public string? GetUserId(HubConnectionContext connection)
         {
-            //<tamer > claims princpal? 
             var principal = connection.User as ClaimsPrincipal;
             // Prefer the application 'uid' claim (local GUID). Fallback to NameIdentifier.
             var uid = principal?.FindFirst("uid")?.Value;

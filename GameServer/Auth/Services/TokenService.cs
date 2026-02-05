@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 using GameServer.Auth.Models;
 
 namespace GameServer.Auth.Services
@@ -13,45 +14,6 @@ namespace GameServer.Auth.Services
         string IssueToken(UserProfile profile);
         ClaimsPrincipal? ValidateAppToken(string token);
     }
-
-    // Minimal IUserProfileService (small in-file implementation for MVP)
-    public interface IUserProfileService
-    {
-        UserProfile CreateGuestProfile(string? displayName = null, TimeSpan? lifetime = null);
-        UserProfile? GetById(Guid id);
-    }
-
-    public class UserProfileService : IUserProfileService
-    {
-        readonly AppDbContext _db;
-        readonly IConfiguration _cfg;
-        public UserProfileService(AppDbContext db,IConfiguration cfg)
-        {
-            _db = db;
-            _cfg=cfg;
-            }
-
-        public UserProfile CreateGuestProfile(string? displayName = null, TimeSpan? lifetime = null)
-        {
-            var now = DateTimeOffset.UtcNow;
-            var guest = new UserProfile
-            {
-                Id = Guid.NewGuid(),
-                Provider = "guest",
-                ProviderId = Guid.NewGuid().ToString(),
-                DisplayName = displayName ?? $"Guest-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}",
-                IsGuest = true,
-                CreatedAt = now,
-                GuestExpiresAt = now.Add(lifetime ?? TimeSpan.FromMinutes(int.Parse(_cfg["Guest:DefaultLifetimeMinutes"]!)))
-            };
-            _db.UserProfiles.Add(guest);
-            _db.SaveChanges();
-            return guest;
-        }
-
-        public UserProfile? GetById(Guid id) => _db.UserProfiles.Find(id);
-    }
-
     public class TokenService : ITokenService
     {
         readonly SymmetricSecurityKey _signingKey;

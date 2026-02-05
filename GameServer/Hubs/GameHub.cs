@@ -31,6 +31,7 @@ namespace GameServer.Hubs
         {
             var playerId = Context.UserIdentifier ?? Context.ConnectionId;
 
+        //<Tamer> why is this line if i do get the connections id ? i think this need edit 
             if (Context.UserIdentifier is null)
             {
                 await Clients.Caller.SendAsync("ReceiveMsg", "Unauthorized: missing user identity");
@@ -50,6 +51,7 @@ namespace GameServer.Hubs
             if (moveResult.Success)
             {
                 // Send the updated board to everyone
+                //<Tamer : can't i get those repetitive lines of updating the baord before the if condition
                 await Clients.Group(matchId).SendAsync("BoardUpdate", gameState.GetBoardState(), gameState.CurrentTurnPlayerId);
 
                 if (gameState.IsGameOver)
@@ -90,8 +92,8 @@ namespace GameServer.Hubs
                     await Groups.AddToGroupAsync(conn, matchId);
 
                 _manager.CreateGame(matchId, type, playerId, opponentId);
-                var game = _manager.GetGameState(matchId);
-
+                var game = _manager.GetGameState(matchId)!;
+                System.Console.WriteLine(game.CurrentTurnPlayerId);
                 await Clients.Group(matchId).SendAsync("GameStarted", matchId, game.GetBoardState(), game.CurrentTurnPlayerId);
 
                 await Clients.Group(matchId).SendAsync("ReceiveMsg", "Match Found! Game Started.");
