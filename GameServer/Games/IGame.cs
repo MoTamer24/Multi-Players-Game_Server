@@ -3,8 +3,8 @@ public interface IGame
 {
     string GameId { get; }
     string CurrentTurnPlayerId { get; }
-    bool IsGameOver { get; }
-    string? WinnerId { get; }
+    bool IsGameOver { get; set; }
+    string? WinnerId { get;set; }
 
     // Transfer any internal references from oldUserId to newUserId (used for guest->user linking)
     void TransferOwnership(string oldUserId, string newUserId);

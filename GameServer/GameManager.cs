@@ -6,86 +6,42 @@ namespace GameServer
         // Waiting players per game type (keyed by userId)
         ConcurrentDictionary<GameType, ConcurrentQueue<string>> WaitingPlayers;
 
-        // Map userId -> set of connectionIds
-        // if a player have many cleints
-        ConcurrentDictionary<string, ConcurrentDictionary<string, bool>> _userConnections;
+
+        //string  : to store connectionId : MatchID 
+        // to trach active players 
+        ConcurrentDictionary<string, bool> _userConnections;
 
         // Games keyed by matchId
         ConcurrentDictionary<string, IGame> GamesList;
+
+        // Track which match each player is in (userId -> matchId)
+        ConcurrentDictionary<string, string> _playerMatches;
 
         public GameManager()
         {
             WaitingPlayers = new();
             _userConnections = new();
             GamesList = new();
+            _playerMatches = new();
         }
 
         // Connection management
-        public void AddConnection(string userId, string connectionId)
+        public void AddConnection( string connectionId)
         {
-            var conns = _userConnections.GetOrAdd(userId, _ => new ConcurrentDictionary<string, bool>());
-            conns.TryAdd(connectionId, true);
+            _userConnections.TryAdd(connectionId,true);
         }
 
         public void RemoveConnection(string connectionId)
         {
-            // find and remove the connection from any user mapping
-            foreach (var kv in _userConnections)
-            {
-                if (kv.Value.TryRemove(connectionId, out _))
-                {
-                    // if no more connections, mark user as offline and remove waiting list entries
-                    if (kv.Value.IsEmpty)
-                    {
-                        _userConnections.TryRemove(kv.Key, out _);
-                        // remove from waiting lists
-                        foreach (var q in WaitingPlayers.Values)
-                        {
-                            // best-effort: rebuild queue without this user (cheap for small queues)
-                            var items = q.ToArray();
-                            var newQ = new ConcurrentQueue<string>(items.Where(id => id != kv.Key));
-                            while (q.TryDequeue(out _)) { }
-                            foreach (var it in newQ) q.Enqueue(it);
-                        }
-                    }
-                    break;
-                }
-            }
+            _userConnections.TryRemove(connectionId, out _);
         }
 
-        public IEnumerable<string> GetConnections(string userId)
-        {
-            if (_userConnections.TryGetValue(userId, out var conns))
-                return conns.Keys;
-            return Array.Empty<string>();
-        }
 
-        // Transfer active games/waitlists from oldUserId to newUserId (guest -> permanent link)
-        public void ReassignPlayerId(string oldUserId, string newUserId)
-        {
-            // move connections
-            if (_userConnections.TryRemove(oldUserId, out var conns))
-            {
-                var target = _userConnections.GetOrAdd(newUserId, _ => new ConcurrentDictionary<string, bool>());
-                foreach (var c in conns.Keys) target.TryAdd(c, true);
-            }
-
-            // update waiting lists
-            foreach (var kv in WaitingPlayers)
-            {
-                var q = kv.Value;
-                var items = q.ToArray();
-                var newQ = new ConcurrentQueue<string>(items.Select(id => id == oldUserId ? newUserId : id));
-                while (q.TryDequeue(out _)) { }
-                foreach (var it in newQ) q.Enqueue(it);
-            }
-
-            // update games
-            foreach (var kv in GamesList)
-            {
-                kv.Value.TransferOwnership(oldUserId, newUserId);
-            }
-        }
+       public string? GetMatchIdForConnection(string connectionId)
+    {
+        _playerMatches.TryGetValue(connectionId, out var matchId);
+        return matchId;
+    }
 
         public void CreateGame(string matchId, GameType type, string playerId, string opponentId)
         {
@@ -94,6 +50,11 @@ namespace GameServer
                           GameFactory.CreateGame(matchId, type, playerId, opponentId),
                            (key, existingValue) => existingValue
                                 );
+
+            // Track which match each player is in
+            
+            _playerMatches.TryAdd(playerId, matchId);
+            _playerMatches.TryAdd(opponentId, matchId);
         }
 
         public IGame? GetGameState(string matchId)
@@ -104,27 +65,37 @@ namespace GameServer
 
         public bool IsActive(string userId)
         {
-            return _userConnections.TryGetValue(userId, out var v) && !v.IsEmpty;
+            return _playerMatches.ContainsKey(userId);
         }
 
-        public string? FindMatch(GameType type, string userId)
+        public void RemoveGame(string matchId)
         {
-            // ensure user is active
-            if (!IsActive(userId)) AddConnection(userId, userId);
-
-            var queue = WaitingPlayers.GetOrAdd(type, _ => new ConcurrentQueue<string>());
-
-            if (queue.TryDequeue(out string? waitingPlayer))
+            if (GamesList.TryRemove(matchId, out var game))
             {
-                if (waitingPlayer != userId && IsActive(waitingPlayer))
-                    return waitingPlayer;
+                // Remove player match associations
+                var playersToRemove = _playerMatches.Where(kv => kv.Value == matchId).Select(kv => kv.Key).ToList();
+                foreach (var player in playersToRemove)
+                {
+                    _playerMatches.TryRemove(player, out _);
+                }
             }
-
-            queue.Enqueue(userId);
-            return null;
         }
+
+     public string? FindMatch(GameType type, string connectionId)
+    {
+        var queue = WaitingPlayers.GetOrAdd(type, _ => new ConcurrentQueue<string>());
+
+        while (queue.TryDequeue(out string? waitingConnectionId))
+        {
+            // Ensure the waiting player is still connected and isn't the same person
+            if (waitingConnectionId != connectionId && _userConnections.ContainsKey(waitingConnectionId))
+                return waitingConnectionId;
+        }
+
+        queue.Enqueue(connectionId);
+        return null;
+    }
     }
 }
 
- 
-     
+

@@ -4,8 +4,9 @@ public class TicTacToeGame : IGame
 {
     private char[] _board = new char[9];
     public string CurrentTurnPlayerId { get; private set; }
-    public bool IsGameOver { get; private set; }
-    public string? WinnerId { get; private set; }
+    public bool IsGameOver { get;  set; }
+
+    public string? WinnerId { get; set; }
     public string GameId { get; }
     public string PlayerX_Id { get; private set; }
     public string PlayerO_Id { get; private set; }

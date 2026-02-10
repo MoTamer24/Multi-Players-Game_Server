@@ -10,6 +10,7 @@ namespace GameServer.Auth
 
         public DbSet<UserProfile> UserProfiles { get; set; } = null!;
         public DbSet<UserConnection> UserConnections { get; set; } = null!;
+        public DbSet<RefreshToken> RefreshTokens{get;set;}=null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -24,6 +25,10 @@ namespace GameServer.Auth
 
             modelBuilder.Entity<UserConnection>()
                 .HasIndex(c => c.UserId);
+            
+            modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => t.Token)
+            .IsUnique();
         }
     }
 }
