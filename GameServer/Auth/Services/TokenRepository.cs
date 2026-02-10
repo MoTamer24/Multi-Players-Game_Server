@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 public interface ITokenRepository
 {
     Task<RefreshToken?> GetRefreshToken(string username, string token);
-    Task SaveRefreshToken(string username, string token);
+    Task SaveRefreshToken(Guid username, string token);
     Task RevokeRefreshToken(RefreshToken token);
 }
 
@@ -27,12 +27,12 @@ public class TokenRepository : ITokenRepository
             .FirstOrDefaultAsync(t => t.UserId.ToString() ==userId  && t.Token == token);
     }
 
-    public async Task SaveRefreshToken(string userId, string token)
+    public async Task SaveRefreshToken(Guid userId, string token)
     {
         var days = _cfg.GetValue<int>("Jwt:RefreshTokenExpirationDays", 7);
         var refreshToken = new RefreshToken
         {
-            UserId = Guid.Parse(userId),
+            UserId = userId,
             Token = token,
             ExpiryDate = DateTime.UtcNow.AddDays(days), 
             IsRevoked = false

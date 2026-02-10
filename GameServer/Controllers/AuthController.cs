@@ -55,11 +55,15 @@ public class AuthController : ControllerBase
                 payload.Email,
                 payload.Name
             );
+        var newAccessToken = _tokenService.IssueTokenFromUserProfile(profile);
+        var newRefreshToken = _tokenService.GenerateRefreshToken();
+        await _tokenRepository.SaveRefreshToken(profile.Id, newRefreshToken);
 
-            // 3. Issue your Game Server Token
-            var token = _tokenService.IssueTokenFromUserProfile(profile);
-
-            return Ok(new { token });
+        return Ok(new
+        {
+            AccessToken = newAccessToken,
+            RefreshToken = newRefreshToken
+        });
         }
         catch (InvalidJwtException)
         {
@@ -85,9 +89,9 @@ public class AuthController : ControllerBase
         var newAccessToken = _tokenService.IssueTokenFromClaims(principal.Claims);
         var newRefreshToken = _tokenService.GenerateRefreshToken();
 
-        // <Tamer> every things is fine but i don't understand what is happeening here 
+       
         await _tokenRepository.RevokeRefreshToken(savedRefreshToken);
-        await _tokenRepository.SaveRefreshToken(userId, newRefreshToken);
+        await _tokenRepository.SaveRefreshToken(Guid.Parse(userId), newRefreshToken);
 
         return Ok(new
         {
