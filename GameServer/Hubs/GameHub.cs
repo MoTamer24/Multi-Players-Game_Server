@@ -15,49 +15,39 @@ namespace GameServer.Hubs
         public override Task OnConnectedAsync()
         {
             // Map authenticated user (uid claim) to this connection; fall back to ConnectionId during migration
+            var userId = Context.UserIdentifier ?? Context.ConnectionId;
+            _manager.AddConnection(userId, Context.ConnectionId);
 
-            _manager.AddConnection(Context.ConnectionId);
-     
             return base.OnConnectedAsync();
         }
 
         public async override Task OnDisconnectedAsync(Exception? exception)
         {
-           var userId = Context.ConnectionId!;
-        
+            var userId = Context.UserIdentifier ?? Context.ConnectionId!;
 
+            // 1. Get the match this USER (not connectionId) was in
+            var matchId = _manager.GetMatchIdForConnection(userId);
 
-    // 1. Get the match this USER (not connectionId) was in
-    var matchId = _manager.GetMatchIdForConnection(userId);
-    
-    if (matchId != null)
-    {
-        var game = _manager.GetGameState(matchId);
-        if (game != null)
-        {   
-            await Clients.Group(matchId).SendAsync("OpponentDisconnected", userId);
-            await Clients.Group(matchId).SendAsync("ReceiveMsg", "Opponent left. You win!");
-            
-            // 3. Cleanup the game
-            _manager.RemoveGame(matchId);
-        }
-    }
+            if (matchId != null)
+            {
+                var game = _manager.GetGameState(matchId);
+                if (game != null)
+                {
+                    await Clients.Group(matchId).SendAsync("OpponentDisconnected", userId);
+                    await Clients.Group(matchId).SendAsync("ReceiveMsg", "Opponent left. You win!");
 
-    _manager.RemoveConnection(Context.ConnectionId);
-    await base.OnDisconnectedAsync(exception);
+                    // 3. Cleanup the game
+                    _manager.RemoveGame(matchId);
+                }
+            }
+
+            _manager.RemoveConnection(userId);
+            await base.OnDisconnectedAsync(exception);
         }
 
         public async Task MakeMove(object movedata, string matchId)
         {
-            var playerId =  Context.ConnectionId;
-                 
-
-        //<Tamer> why is this line if i do get the connections id ? i think this need edit 
-            if (Context.UserIdentifier is null)
-            {
-                await Clients.Caller.SendAsync("ReceiveMsg", "Unauthorized: missing user identity");
-                return;
-            }
+            var playerId = Context.UserIdentifier ?? Context.ConnectionId;
 
             var gameState = _manager.GetGameState(matchId);
 
@@ -69,50 +59,55 @@ namespace GameServer.Hubs
 
             var moveResult = gameState.MakeMove(playerId, movedata);
 
+            // Always send the board state (both success and failure cases)
+            var targetClients = moveResult.Success ? Clients.Group(matchId) : Clients.Caller;
+            await targetClients.SendAsync("BoardUpdate", gameState.GetBoardState(), gameState.CurrentTurnPlayerId);
+
             if (moveResult.Success)
             {
-                // Send the updated board to everyone
-                //<Tamer : can't i get those repetitive lines of updating the baord before the if condition
-                await Clients.Group(matchId).SendAsync("BoardUpdate", gameState.GetBoardState(), gameState.CurrentTurnPlayerId);
-
+                // Check if game ended after the move
                 if (gameState.IsGameOver)
                 {
                     await Clients.Group(matchId).SendAsync("GameOver", gameState.WinnerId);
+                    _manager.RemoveGame(matchId);
                 }
             }
             else
             {
-                await Clients.Caller.SendAsync("BoardUpdate", gameState.GetBoardState(), gameState.CurrentTurnPlayerId);
+                // Send error message only on invalid moves
                 await Clients.Caller.SendAsync("ReceiveMsg", moveResult.ErrorMessage);
             }
         }
 
-       public async Task FindMatch(GameType type)
-{
-    // Use ConnectionId as the unique identifier
-    var playerId = Context.ConnectionId;
-    
-    // FindMatch now returns the Connection ID of a waiting player
-    var opponentId = _manager.FindMatch(type, playerId);
+        public async Task FindMatch(GameType type)
+        {
+            // Use ConnectionId as the unique identifier
+            var playerId = Context.UserIdentifier ?? Context.ConnectionId;
 
-    if (opponentId is null)
-    {
-        await Clients.Caller.SendAsync("ReceiveMsg", "You are on waiting list...");
-    }
-    else
-    {
-        var matchId = Guid.NewGuid().ToString();
-        
-        // Both players join the same SignalR group using Connection IDs
-        await Groups.AddToGroupAsync(Context.ConnectionId, matchId);
-        await Groups.AddToGroupAsync(opponentId, matchId);
-        
-        _manager.CreateGame(matchId, type, playerId, opponentId);
-        var game = _manager.GetGameState(matchId)!;
-     
-        await Clients.Group(matchId).SendAsync("GameStarted", matchId, game.GetBoardState(), game.CurrentTurnPlayerId);
-        await Clients.Group(matchId).SendAsync("ReceiveMsg", "Match Found! Game Started.");
-    }
-}
+            // FindMatch now returns the userId of a waiting player
+            var opponentId = _manager.FindMatch(type, playerId);
+
+            if (opponentId is null)
+            {
+                await Clients.Caller.SendAsync("ReceiveMsg", "You are on waiting list...");
+            }
+            else
+            {
+                var matchId = Guid.NewGuid().ToString();
+
+                // Both players join the same SignalR group using Connection IDs
+                await Groups.AddToGroupAsync(Context.ConnectionId, matchId);
+                if (_manager.TryGetConnectionId(opponentId, out var oppConn))
+                {
+                    await Groups.AddToGroupAsync(oppConn, matchId);
+                }
+
+                _manager.CreateGame(matchId, type, playerId, opponentId);
+                var game = _manager.GetGameState(matchId)!;
+
+                await Clients.Group(matchId).SendAsync("GameStarted", matchId, game.GetBoardState(), game.CurrentTurnPlayerId);
+                await Clients.Group(matchId).SendAsync("ReceiveMsg", "Match Found! Game Started.");
+            }
+        }
     }
 }

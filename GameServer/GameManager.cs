@@ -7,9 +7,8 @@ namespace GameServer
         ConcurrentDictionary<GameType, ConcurrentQueue<string>> WaitingPlayers;
 
 
-        //string  : to store connectionId : MatchID 
-        // to trach active players 
-        ConcurrentDictionary<string, bool> _userConnections;
+        // Map userId -> connectionId for currently connected users
+        ConcurrentDictionary<string, string> _userConnections;
 
         // Games keyed by matchId
         ConcurrentDictionary<string, IGame> GamesList;
@@ -26,22 +25,30 @@ namespace GameServer
         }
 
         // Connection management
-        public void AddConnection( string connectionId)
+        // Add a connection for a user (userId -> connectionId)
+        public void AddConnection(string userId, string connectionId)
         {
-            _userConnections.TryAdd(connectionId,true);
+            _userConnections.TryAdd(userId, connectionId);
         }
 
-        public void RemoveConnection(string connectionId)
+        // Remove a user's connection record
+        public void RemoveConnection(string userId)
         {
-            _userConnections.TryRemove(connectionId, out _);
+            _userConnections.TryRemove(userId, out _);
+        }
+
+        // Try get the current connectionId for a user
+        public bool TryGetConnectionId(string userId, out string connectionId)
+        {
+            return _userConnections.TryGetValue(userId, out connectionId);
         }
 
 
-       public string? GetMatchIdForConnection(string connectionId)
-    {
-        _playerMatches.TryGetValue(connectionId, out var matchId);
-        return matchId;
-    }
+        public string? GetMatchIdForConnection(string connectionId)
+        {
+            _playerMatches.TryGetValue(connectionId, out var matchId);
+            return matchId;
+        }
 
         public void CreateGame(string matchId, GameType type, string playerId, string opponentId)
         {
@@ -52,7 +59,7 @@ namespace GameServer
                                 );
 
             // Track which match each player is in
-            
+
             _playerMatches.TryAdd(playerId, matchId);
             _playerMatches.TryAdd(opponentId, matchId);
         }
@@ -81,20 +88,20 @@ namespace GameServer
             }
         }
 
-     public string? FindMatch(GameType type, string connectionId)
-    {
-        var queue = WaitingPlayers.GetOrAdd(type, _ => new ConcurrentQueue<string>());
-
-        while (queue.TryDequeue(out string? waitingConnectionId))
+        public string? FindMatch(GameType type, string connectionId)
         {
-            // Ensure the waiting player is still connected and isn't the same person
-            if (waitingConnectionId != connectionId && _userConnections.ContainsKey(waitingConnectionId))
-                return waitingConnectionId;
-        }
+            var queue = WaitingPlayers.GetOrAdd(type, _ => new ConcurrentQueue<string>());
 
-        queue.Enqueue(connectionId);
-        return null;
-    }
+            while (queue.TryDequeue(out string? waitingConnectionId))
+            {
+                // Ensure the waiting player is still connected and isn't the same person
+                if (waitingConnectionId != connectionId && _userConnections.ContainsKey(waitingConnectionId))
+                    return waitingConnectionId;
+            }
+
+            queue.Enqueue(connectionId);
+            return null;
+        }
     }
 }
 
