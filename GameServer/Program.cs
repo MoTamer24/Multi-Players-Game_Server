@@ -1,6 +1,5 @@
 using GameServer;
 using GameServer.Hubs;
-using GameServer.Auth.Models;
 using GameServer.Auth.Services;
 using GameServer.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -20,6 +19,8 @@ string connectionString = config.GetConnectionString("DefaultConnection")
 builder.Services.AddSignalR();
 builder.Services.AddControllers();  
 builder.Services.AddSingleton<GameManager>();
+builder.Services.AddScoped<ITokenService,TokenService>();
+builder.Services.AddScoped<ITokenRepository,TokenRepository>();
 
 // Persistence
 builder.Services.AddDbContext<AppDbContext>(opts => opts.UseSqlite(connectionString));

@@ -31,8 +31,9 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Guest(GuestDto guest)
     {
         var profile = await _userProfileService.CreateGuestProfile(guest.DisplayName);
-        var token = _tokenService.IssueTokenFromUserProfile(profile);
-        return Ok(new { token });
+        var userId=profile.Id;
+        var AccessToken = _tokenService.IssueTokenFromUserProfile(profile);
+        return Ok(new { AccessToken , userId});
     }
 
     [HttpPost("google")]
@@ -58,11 +59,12 @@ public class AuthController : ControllerBase
         var newAccessToken = _tokenService.IssueTokenFromUserProfile(profile);
         var newRefreshToken = _tokenService.GenerateRefreshToken();
         await _tokenRepository.SaveRefreshToken(profile.Id, newRefreshToken);
-
+        var userId= profile.Id;
         return Ok(new
         {
             AccessToken = newAccessToken,
-            RefreshToken = newRefreshToken
+            RefreshToken = newRefreshToken,
+            userId
         });
         }
         catch (InvalidJwtException)
