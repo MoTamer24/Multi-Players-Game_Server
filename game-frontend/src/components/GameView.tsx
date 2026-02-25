@@ -10,19 +10,23 @@ const GameView = () => {
   const isGameOver = useGameStore((s) => s.isGameOver);
   const matchId = useGameStore((s) => s.matchId);
   const userId = useAuthStore((s) => s.user?.id || '');
+
   const isMyTurn = currentTurnId === userId && !isGameOver;
 
   const handleCellClick = async (index: number) => {
-    if (!isMyTurn || board[index] !== null || !matchId) return;
+    if (!isMyTurn || board[index] !== "-" || !matchId) {
+      return;}
     try {
+      console.log("Sending move to server...");
       await signalRService.makeMove({ cellIndex: index }, matchId);
     } catch (err) {
       console.error('Move failed:', err);
     }
   };
-
   const renderCell = (value: string | null, index: number) => {
-    const isClickable = isMyTurn && value === null;
+
+  const isClickable = isMyTurn && value === "-";
+
     return (
       <button
         key={index}
@@ -42,7 +46,7 @@ const GameView = () => {
       </button>
     );
   };
-console.log('Server Turn ID:', currentTurnId, '| My Frontend ID:', userId);
+//console.log("RENDER CHECK -> TurnId:", currentTurnId, "| MyId:", userId, "| isMyTurn:", isMyTurn);
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       <WinnerOverlay />

@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.SignalR;
+using System.Text.Json;
 
 public class TicTacToeGame : IGame
 {
     private char[] _board = new char[9];
     public string CurrentTurnPlayerId { get; private set; }
-    public bool IsGameOver { get;  set; }
+    public bool IsGameOver { get; set; }
 
     public string? WinnerId { get; set; }
     public string GameId { get; }
@@ -36,13 +37,25 @@ public class TicTacToeGame : IGame
         // 2. Deserialize the specific move for THIS game type
         // The Hub sends us a JSON element (System.Text.Json)
         int index;
-        try
+
+        // Check if SignalR passed us a parsed JsonElement
+        if (moveData is JsonElement jsonElement)
         {
-            index = Convert.ToInt32(moveData.ToString());
+            // Extract the specific property sent from the frontend
+            if (!jsonElement.TryGetProperty("cellIndex", out var indexProp))
+            {
+                return new MoveResult( false,"Invalid move format." );
+            }
+            index= indexProp.GetInt32();
         }
-        catch
+        // Fallback in case you are calling this internally with a raw int
+        else if (moveData is int directIndex)
         {
-            return new MoveResult(false, "Invalid move format for XO");
+            index = directIndex;
+        }
+        else
+        {
+            return new MoveResult(  false, "Unrecognized move data.") ;
         }
 
         // 1. Validation Checks
