@@ -28,13 +28,12 @@ builder.Services.AddDbContext<AppDbContext>(opts => opts.UseSqlite(connectionStr
 // Auth DI (implementations added in Auth/Services) 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
-builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, ClaimUserIdProvider>();
 
 // CORS (keep restrictive in production)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy => policy
-        .SetIsOriginAllowed(origin => true)
+        .WithOrigins("http://localhost:8080")
         .AllowAnyMethod()
         .AllowAnyHeader()
         .AllowCredentials());
@@ -44,8 +43,7 @@ builder.Services.AddCors(options =>
 var jwtKey = config["JWT:SigningKey"];
 if (string.IsNullOrEmpty(jwtKey))
 {
-    // Development fallback (not for production)
-    jwtKey = "dev-key-please-replace-in-prod-CHANGE_THIS_TO_ENV_VAR";
+    throw new Exception("now JWT key messing ");
 }
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 

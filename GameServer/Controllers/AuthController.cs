@@ -1,4 +1,3 @@
-
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using GameServer.Auth.Services;
@@ -37,17 +36,17 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("google")]
-    public async Task<IActionResult> GoogleLogin([FromBody] string googleIdToken)
+    public async Task<IActionResult> GoogleLogin([FromBody] idPToken googleIdToken)
     {
         try
         {
+       
             // 1. Verify the token with Google
             var settings = new GoogleJsonWebSignature.ValidationSettings()
             {
                 Audience = new[] { _cfg["Google:ClientId"] }
             };
-
-            var payload = await GoogleJsonWebSignature.ValidateAsync(googleIdToken, settings);
+            var payload = await GoogleJsonWebSignature.ValidateAsync(googleIdToken.idptoken, settings);
 
             // 2. Sync with your DB
             var profile = await _userProfileService.FindOrCreateProfile(
@@ -77,6 +76,7 @@ public class AuthController : ControllerBase
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] TokenRequest request)
     {
+        System.Console.WriteLine("Token refreshed");
         var principal = GetPrincipalFromExpiredToken(request.AccessToken);
         var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
@@ -104,6 +104,7 @@ public class AuthController : ControllerBase
     private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
     {
         var tokenValidationParameters = AuthConstants.GetAuthParameters(_cfg);
+        tokenValidationParameters.ValidateLifetime = false; // because the token should be expired , if it is true , it will just throw an status code 500 unauthorized 
 
         var tokenHandler = new JwtSecurityTokenHandler();
         var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);

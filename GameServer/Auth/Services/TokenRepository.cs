@@ -17,14 +17,15 @@ public class TokenRepository : ITokenRepository
     {
         _context = context;
         _cfg=IC;
-
     }
 
 
     public async Task<RefreshToken?> GetRefreshToken(string userId, string token)
     {
+        var parsedId = Guid.Parse(userId);
         return await _context.RefreshTokens
-            .FirstOrDefaultAsync(t => t.UserId.ToString() ==userId  && t.Token == token);
+        .FirstOrDefaultAsync(t => t.UserId == parsedId && t.Token == token);
+
     }
 
     public async Task SaveRefreshToken(Guid userId, string token)

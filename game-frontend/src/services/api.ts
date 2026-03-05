@@ -30,6 +30,7 @@ api.interceptors.response.use(
           accessToken,
           refreshToken,
         });
+        console.log("token refreshed");
         useAuthStore.getState().updateTokens(data.accessToken, data.refreshToken);
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(originalRequest);
@@ -46,7 +47,7 @@ export const authApi = {
   guestLogin: (guestName: string) =>
     api.post('/api/auth/guest', { guestName }),
   googleLogin: (googleIdToken: string) =>
-    api.post('/api/auth/google', { googleIdToken }),
+    api.post('/api/auth/google', { idptoken:googleIdToken }),
 };
 
 export default api;

@@ -12,7 +12,6 @@ namespace GameServer.Auth.Services
     {
         string IssueTokenFromUserProfile(UserProfile profile);
         string IssueTokenFromClaims(IEnumerable<Claim> claims);
-        ClaimsPrincipal? ValidateAppToken(string token);
         string GenerateRefreshToken();
     }
     public class TokenService : ITokenService
@@ -79,20 +78,7 @@ namespace GameServer.Auth.Services
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        public ClaimsPrincipal? ValidateAppToken(string token)
-        {
-            var tvp = AuthConstants.GetAuthParameters(_cfg);
-            try
-            {
-                var handler = new JwtSecurityTokenHandler();
-                var principal = handler.ValidateToken(token, tvp, out _);
-                return principal;
-            }
-            catch
-            {
-                return null;
-            }
-        }
+     
         public string GenerateRefreshToken()
         {
             var randomNumber = new byte[32];

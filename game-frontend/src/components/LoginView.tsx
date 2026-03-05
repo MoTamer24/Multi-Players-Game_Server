@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { authApi } from '@/services/api';
 import { signalRService } from '@/services/signalRService';
 import { toast } from 'sonner';
+import {GoogleLogin} from '@react-oauth/google';
 
 const LoginView = () => {
   const [guestName, setGuestName] = useState('');
@@ -31,8 +32,28 @@ const LoginView = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    toast.info('Google login requires backend OAuth setup.');
+ const handleGoogleSuccess = async (credentialResponse: any) => {
+    setLoading(true);
+    try {
+      // credentialResponse.credential contains the raw JWT id_token from Google
+      const idToken = credentialResponse.credential; 
+      
+      const { data } = await authApi.googleLogin(idToken);
+      
+      setAuth(
+        { id: data.userId, name: 'Pilot', token: data.accessToken }, // Adjust name extraction if you want it from Google
+        data.accessToken,
+        data.refreshToken
+      );
+      
+      await signalRService.start(data.accessToken);
+      toast.success('Connected via Google.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Google authentication rejected by server.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -99,12 +120,23 @@ const LoginView = () => {
         </div>
 
         {/* Google Login */}
-        <button
-          onClick={handleGoogleLogin}
-          className="neon-button-emerald w-full text-sm"
-        >
-          Login with Google
-        </button>
+
+
+
+        {/* Google Login Component */}
+        <div className="flex justify-center w-full">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => {
+              toast.error('Google Login Failed locally.');
+            }}
+            theme="filled_black" // Try to match your dark UI
+            shape="rectangular"
+            text="signin_with"
+          />
+          </div>
+
+        
       </div>
     </div>
   );
