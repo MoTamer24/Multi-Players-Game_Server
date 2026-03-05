@@ -22,28 +22,30 @@ namespace GameServer.Hubs
         }
 
         public async override Task OnDisconnectedAsync(Exception? exception)
+{
+    var userId = Context.UserIdentifier ?? Context.ConnectionId!;
+
+    // 1. If they were in a match, end it and let the opponent win
+    var matchId = _manager.GetMatchIdForConnection(userId);
+    if (matchId != null)
+    {
+        var game = _manager.GetGameState(matchId);
+        if (game != null)
         {
-            var userId = Context.UserIdentifier ?? Context.ConnectionId!;
-
-            // 1. Get the match this USER (not connectionId) was in
-            var matchId = _manager.GetMatchIdForConnection(userId);
-
-            if (matchId != null)
-            {
-                var game = _manager.GetGameState(matchId);
-                if (game != null)
-                {
-                    await Clients.Group(matchId).SendAsync("OpponentDisconnected", userId);
-                    await Clients.Group(matchId).SendAsync("ReceiveMsg", "Opponent left. You win!");
-
-                    // 3. Cleanup the game
-                    _manager.RemoveGame(matchId);
-                }
-            }
-
-            _manager.RemoveConnection(userId);
-            await base.OnDisconnectedAsync(exception);
+            await Clients.Group(matchId).SendAsync("OpponentDisconnected", userId);
+            await Clients.Group(matchId).SendAsync("ReceiveMsg", "Opponent left. You win!");
+            
+            // Optional: Save to MatchRecords here if you want disconnects to count as losses
+            
+            _manager.RemoveGame(matchId);
         }
+    }
+
+    // 2. Remove their connection so FindMatch ignores them if they were in the queue
+    _manager.RemoveConnection(userId);
+
+    await base.OnDisconnectedAsync(exception);
+}
 
         public async Task MakeMove(object movedata, string matchId)
         {
@@ -79,6 +81,17 @@ namespace GameServer.Hubs
             }
         }
 
+        public async Task SendChatMessage(string matchId, string message)
+{
+    var playerId = Context.UserIdentifier ?? Context.ConnectionId;
+    
+    // Verify the game exists so people can't spam random match IDs
+    var gameState = _manager.GetGameState(matchId);
+    if (gameState == null) return;
+
+    // Broadcast the message to both players in the match
+    await Clients.Group(matchId).SendAsync("ReceiveChat", playerId, message);
+}
         public async Task FindMatch(GameType type)
         {
             // Use ConnectionId as the unique identifier

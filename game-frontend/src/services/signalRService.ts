@@ -68,6 +68,15 @@ async start(directToken?: string): Promise<void> {
       toast.error('Opponent disconnected');
       useGameStore.getState().addMessage(`⚠️ Opponent (${userId}) disconnected`);
     });
+    this.connection.on("ReceiveChat", (playerId, message) => {
+    // Push this string to your Zustand store's statusMessages array
+    useGameStore.getState().addMessage(`${playerId.slice(0, 4)}: ${message}`); 
+});
+
+this.connection.on("OpponentDisconnected", (userId) => {
+    // Trigger game over in your store and show the win
+    useGameStore.getState().handleOpponentDisconnect();
+});
   }
 
   async findMatch(gameType: number): Promise<void> {
@@ -80,6 +89,9 @@ async start(directToken?: string): Promise<void> {
 
   async stop(): Promise<void> {
     await this.connection?.stop();
+  }
+  async sendChatMessage(matchId:string, chatInput:string):Promise<void>{
+     await this.connection?.invoke('MakeMove', matchId,chatInput);
   }
 }
 

@@ -10,6 +10,7 @@ interface GameStoreState {
   statusMessages: string[];
   showWinnerOverlay: boolean;
 
+  handleOpponentDisconnect: () => void;
   setMatch: (matchId: string, board: (string | null)[], turnId: string) => void;
   updateBoard: (board: (string | null)[], turnId: string) => void;
   setGameOver: (winnerId: string | null) => void;
@@ -46,6 +47,17 @@ export const useGameStore = create<GameStoreState>((set) => ({
 
   setShowWinnerOverlay: (show) =>
     set({ showWinnerOverlay: show }),
+
+  
+  handleOpponentDisconnect: () => set((state) => ({
+    isGameOver: true,
+    // Add a red system alert to the chat messages
+    statusMessages: [
+        ...state.statusMessages, 
+        "⚠️ SYSTEM: Opponent disconnected. Match terminated. You win!"
+    ]
+}))
+  ,
 
   resetGame: () =>
     set({

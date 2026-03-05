@@ -9,7 +9,7 @@ namespace GameServer.Auth
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<UserProfile> UserProfiles { get; set; } = null!;
-        public DbSet<UserConnection> UserConnections { get; set; } = null!;
+        public DbSet<MatchRecord> MatchRecords { get; set; } = null!;
         public DbSet<RefreshToken> RefreshTokens{get;set;}=null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

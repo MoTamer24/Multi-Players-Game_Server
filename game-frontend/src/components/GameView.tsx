@@ -1,87 +1,78 @@
 import { useGameStore } from '@/stores/useGameStore';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useRef, useEffect, useState } from 'react';
 import { signalRService } from '@/services/signalRService';
-import MessageSidebar from './MessageSidebar';
-import WinnerOverlay from './WinnerOverlay';
 
-const GameView = () => {
-  const board = useGameStore((s) => s.board);
-  const currentTurnId = useGameStore((s) => s.currentTurnId);
-  const isGameOver = useGameStore((s) => s.isGameOver);
+const MessageSidebar = () => {
+  const messages = useGameStore((s) => s.statusMessages);
   const matchId = useGameStore((s) => s.matchId);
-  const userId = useAuthStore((s) => s.user?.id || '');
+  const bottomRef = useRef<HTMLDivElement>(null);
+  
+  // Local state for the chat input box
+  const [chatInput, setChatInput] = useState('');
 
-  const isMyTurn = currentTurnId === userId && !isGameOver;
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  const handleCellClick = async (index: number) => {
-    if (!isMyTurn || board[index] !== "-" || !matchId) {
-      return;}
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !matchId) return;
+
     try {
-      console.log("Sending move to server...");
-      await signalRService.makeMove({ cellIndex: index }, matchId);
+      // Send to your backend Hub method
+      await signalRService.sendChatMessage(matchId, chatInput);
+      setChatInput(''); // Clear the box after sending
     } catch (err) {
-      console.error('Move failed:', err);
+      console.error('Chat failed:', err);
     }
   };
-  const renderCell = (value: string | null, index: number) => {
 
-  const isClickable = isMyTurn && value === "-";
-
-    return (
-      <button
-        key={index}
-        onClick={() => handleCellClick(index)}
-        disabled={!isClickable}
-        className={`
-          aspect-square flex items-center justify-center text-4xl sm:text-5xl font-display font-bold
-          border border-border/50 rounded-lg transition-all duration-300
-          ${isClickable ? 'cell-hover cursor-pointer' : 'cursor-default'}
-          ${value === 'X' ? 'text-primary glow-text-cyan' : ''}
-          ${value === 'O' ? 'text-secondary glow-text-emerald' : ''}
-          ${!value ? 'text-transparent' : ''}
-          bg-card/30
-        `}
-      >
-        {value || '·'}
-      </button>
-    );
-  };
-//console.log("RENDER CHECK -> TurnId:", currentTurnId, "| MyId:", userId, "| isMyTurn:", isMyTurn);
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-      <WinnerOverlay />
-
-      {/* Main game area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
-        {/* Turn indicator */}
-        <div className="mb-6 text-center animate-fade-in">
-          <p className="font-display text-xs uppercase tracking-[0.3em] text-muted-foreground mb-1">
-            {isGameOver ? 'Game Over' : isMyTurn ? 'Your Turn' : "Opponent's Turn"}
-          </p>
-          <div className={`w-16 h-0.5 mx-auto transition-all duration-500 ${
-            isMyTurn ? 'bg-primary' : 'bg-muted-foreground/30'
-          }`} />
-        </div>
-
-        {/* Board */}
-        <div
-          className={`grid grid-cols-3 gap-2 w-full max-w-xs sm:max-w-sm p-4 rounded-xl transition-all duration-700 ${
-            isMyTurn ? 'board-glow-active' : 'board-glow-inactive'
-          }`}
-        >
-          {board.map((cell, i) => renderCell(cell, i))}
-        </div>
-
-        {/* Match ID */}
-        <p className="mt-6 text-xs text-muted-foreground/50 font-mono">
-          Match: {matchId?.slice(0, 8) || '—'}
-        </p>
+    <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-border bg-card/30 backdrop-blur-sm flex flex-col h-full">
+      <div className="p-4 border-b border-border">
+        <h3 className="font-display text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          Comms & System Log
+        </h3>
       </div>
 
-      {/* Sidebar */}
-      <MessageSidebar />
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 max-h-48 lg:max-h-none">
+        {messages.length === 0 ? (
+          <p className="text-xs text-muted-foreground/50 italic">Awaiting transmissions...</p>
+        ) : (
+          messages.map((msg, i) => (
+            <div
+              key={i}
+              className="text-xs text-muted-foreground py-1.5 px-3 rounded bg-muted/30 border border-border/50 animate-fade-in"
+            >
+              {msg}
+            </div>
+          ))
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* New Chat Input Area */}
+      <div className="p-4 border-t border-border mt-auto">
+        <form onSubmit={handleSendMessage} className="flex gap-2">
+          <input
+            type="text"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="Send a message..."
+            disabled={!matchId}
+            className="flex-1 bg-background border border-border rounded px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary disabled:opacity-50"
+          />
+          <button
+            type="submit"
+            disabled={!matchId || !chatInput.trim()}
+            className="bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 px-3 py-2 rounded text-xs font-bold transition-colors disabled:opacity-50"
+          >
+            SEND
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
 
-export default GameView;
+export default MessageSidebar;
