@@ -90,8 +90,9 @@ this.connection.on("OpponentDisconnected", (userId) => {
   async stop(): Promise<void> {
     await this.connection?.stop();
   }
-  async sendChatMessage(matchId:string, chatInput:string):Promise<void>{
-     await this.connection?.invoke('MakeMove', matchId,chatInput);
+  async sendChatMessage(matchId: string, chatInput: string): Promise<void> {
+    // call hub method for chat rather than MakeMove
+    await this.connection?.invoke('SendChatMessage', matchId, chatInput);
   }
 }
 

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { User } from '@/types';
 
 interface AuthState {
@@ -11,27 +12,30 @@ interface AuthState {
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  accessToken: null,
-  refreshToken: null,
-  isAuthenticated: false,
+// persisted store will keep values across page reloads
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      isAuthenticated: false,
 
-  setAuth: (user, accessToken, refreshToken) => {
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    set({ user, accessToken, refreshToken, isAuthenticated: true });
-  },
+      setAuth: (user, accessToken, refreshToken) => {
+        set({ user, accessToken, refreshToken, isAuthenticated: true });
+      },
 
-  updateTokens: (accessToken, refreshToken) => {
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    set({ accessToken, refreshToken });
-  },
+      updateTokens: (accessToken, refreshToken) => {
+        set({ accessToken, refreshToken });
+      },
 
-  logout: () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
-  },
-}));
+      logout: () => {
+        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+      },
+    }),
+    {
+      name: 'auth', // localStorage key
+      // we could optionally transform or filter state
+    }
+  )
+);
