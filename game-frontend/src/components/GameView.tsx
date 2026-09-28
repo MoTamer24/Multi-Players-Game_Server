@@ -11,7 +11,7 @@ const GameView = () => {
   const isGameOver = useGameStore((s) => s.isGameOver);
   const userId = useAuthStore((s) => s.user?.id || '');
 
-  const handleCellClick = async (idx: number) => {
+  const handleCellClick = async (idx: number) => { 
     if (!matchId || isGameOver) return;
     if (currentTurnId !== userId) return; // not your turn
 
