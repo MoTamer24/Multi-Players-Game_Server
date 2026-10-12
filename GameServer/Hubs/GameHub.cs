@@ -21,7 +21,7 @@ namespace GameServer.Hubs
             return base.OnConnectedAsync();
         }
 
-        public async override Task OnDisconnectedAsync(Exception? exception)
+public async override Task OnDisconnectedAsync(Exception? exception)
 {
     var userId = Context.UserIdentifier ?? Context.ConnectionId!;
 
@@ -47,7 +47,7 @@ namespace GameServer.Hubs
     await base.OnDisconnectedAsync(exception);
 }
 
-        public async Task MakeMove(object movedata, string matchId)
+public async Task MakeMove(object movedata, string matchId)
         {
             var playerId = Context.UserIdentifier ?? Context.ConnectionId;
 
@@ -81,7 +81,7 @@ namespace GameServer.Hubs
             }
         }
 
-        public async Task SendChatMessage(string matchId, string message)
+public async Task SendChatMessage(string matchId, string message)
 {
     var playerId = Context.UserIdentifier ?? Context.ConnectionId;
     
