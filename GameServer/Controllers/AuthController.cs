@@ -1,132 +1,166 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using GameServer.Auth.Services;
-using Google.Apis.Auth;
 using System.Security.Claims;
-using System.IdentityModel.Tokens.Jwt;
+using GameServer.Application.DTOs;
+using GameServer.Application.Interfaces;
+using Google.Apis.Auth;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 
-[ApiController]
-[Route("api/[controller]")]
-public class AuthController : ControllerBase
+namespace GameServer.Controllers
 {
-    readonly ITokenService _tokenService;
-    readonly IUserProfileService _userProfileService;
-    readonly IConfiguration _cfg;
-    readonly ITokenRepository _tokenRepository;
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AuthController : ControllerBase
+    {
+        private readonly ITokenService _tokenService;
+        private readonly IUserProfileService _userProfileService;
+        private readonly ITokenRepository _tokenRepository;
+        private readonly IConfiguration _cfg;
+        private readonly ILogger<AuthController> _logger;
 
-    public AuthController(
-             ITokenService tokenService,
-             IUserProfileService userProfileService,
-             IConfiguration cfg,
-             ITokenRepository TR)
-    {
-        this._tokenService = tokenService;
-        this._userProfileService = userProfileService;
-        this._cfg = cfg;
-        _tokenRepository = TR;
-    }
-    [HttpPost("guest")]
-    public async Task<IActionResult> Guest(GuestDto guest)
-    {
-        var profile = await _userProfileService.CreateGuestProfile(guest.DisplayName);
-        var userId=profile.Id;
-        var AccessToken = _tokenService.IssueTokenFromUserProfile(profile);
-        return Ok(new { AccessToken , userId});
-    }
-
-    [HttpPost("google")]
-    public async Task<IActionResult> GoogleLogin([FromBody] idPToken googleIdToken)
-    {
-        try
+        public AuthController(
+            ITokenService tokenService,
+            IUserProfileService userProfileService,
+            ITokenRepository tokenRepository,
+            IConfiguration cfg,
+            ILogger<AuthController> logger)
         {
-       
-            // 1. Verify the token with Google
-            var settings = new GoogleJsonWebSignature.ValidationSettings()
+            _tokenService = tokenService;
+            _userProfileService = userProfileService;
+            _tokenRepository = tokenRepository;
+            _cfg = cfg;
+            _logger = logger;
+        }
+
+        [HttpPost("guest")]
+        public async Task<IActionResult> Guest([FromBody] GuestLoginRequest guest)
+        {
+            var displayName = guest.GetEffectiveName();
+            var profile = await _userProfileService.CreateGuestProfileAsync(displayName);
+            var accessToken = _tokenService.IssueTokenFromUserProfile(profile);
+
+            return Ok(new
             {
-                Audience = new[] { _cfg["Google:ClientId"] }
-            };
-            var payload = await GoogleJsonWebSignature.ValidateAsync(googleIdToken.idptoken, settings);
-
-            // 2. Sync with your DB
-            var profile = await _userProfileService.FindOrCreateProfile(
-                "google",
-                payload.Subject, // This is the unique Google ID
-                payload.Email,
-                payload.Name
-            );
-        var newAccessToken = _tokenService.IssueTokenFromUserProfile(profile);
-        var newRefreshToken = _tokenService.GenerateRefreshToken();
-        await _tokenRepository.SaveRefreshToken(profile.Id, newRefreshToken);
-        var userId= profile.Id;
-        return Ok(new
-        {
-            AccessToken = newAccessToken,
-            RefreshToken = newRefreshToken,
-            userId
-        });
-        }
-        catch (InvalidJwtException)
-        {
-            return Unauthorized("Invalid Google Token");
-        }
-    }
-
-
-    [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh([FromBody] TokenRequest request)
-    {
-        System.Console.WriteLine("Token refreshed");
-        var principal = GetPrincipalFromExpiredToken(request.AccessToken);
-        var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userId)) return Unauthorized();
-
-        var savedRefreshToken = await _tokenRepository.GetRefreshToken(userId, request.RefreshToken);
-
-        if (savedRefreshToken == null || savedRefreshToken.IsRevoked || savedRefreshToken.ExpiryDate <= DateTime.UtcNow)
-        {
-            return Unauthorized("Invalid refresh token");
+                AccessToken = accessToken,
+                token = accessToken, // Backwards compatibility for older demo clients
+                userId = profile.Id
+            });
         }
 
-        var newAccessToken = _tokenService.IssueTokenFromClaims(principal.Claims);
-        var newRefreshToken = _tokenService.GenerateRefreshToken();
-
-       
-        await _tokenRepository.RevokeRefreshToken(savedRefreshToken);
-        await _tokenRepository.SaveRefreshToken(Guid.Parse(userId), newRefreshToken);
-
-        return Ok(new
+        [HttpPost("google")]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest googleRequest)
         {
-            AccessToken = newAccessToken,
-            RefreshToken = newRefreshToken
-        });
-    }
-    private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
-    {
-        var tokenValidationParameters = AuthConstants.GetAuthParameters(_cfg);
-        tokenValidationParameters.ValidateLifetime = false; // because the token should be expired , if it is true , it will just throw an status code 500 unauthorized 
+            var rawToken = googleRequest.GetToken();
+            if (string.IsNullOrWhiteSpace(rawToken))
+            {
+                return BadRequest("Missing Google token");
+            }
 
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
+            try
+            {
+                var settings = new GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = new[] { _cfg["Google:ClientId"] }
+                };
 
-        if (!(securityToken is JwtSecurityToken jwtSecurityToken) ||
-            !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
-            throw new SecurityTokenException("Invalid token");
+                var payload = await GoogleJsonWebSignature.ValidateAsync(rawToken, settings);
 
-        return principal;
-    }
-    [HttpPost("revoke")]
-    [Authorize] // This one SHOULD be authorized because the user is currently logged in
-    public async Task<IActionResult> Revoke([FromBody] string refreshToken)
-    {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userId)) return Unauthorized();
-        var token = await _tokenRepository.GetRefreshToken(userId, refreshToken);
+                var profile = await _userProfileService.FindOrCreateProfileAsync(
+                    provider: "google",
+                    providerId: payload.Subject,
+                    email: payload.Email,
+                    name: payload.Name
+                );
 
-        if (token == null) return BadRequest("Invalid token");
+                var newAccessToken = _tokenService.IssueTokenFromUserProfile(profile);
+                var newRefreshToken = _tokenService.GenerateRefreshToken();
+                await _tokenRepository.SaveRefreshTokenAsync(profile.Id, newRefreshToken);
 
-        await _tokenRepository.RevokeRefreshToken(token);
-        return Ok("Token revoked successfully");
+                return Ok(new
+                {
+                    AccessToken = newAccessToken,
+                    token = newAccessToken,
+                    RefreshToken = newRefreshToken,
+                    userId = profile.Id
+                });
+            }
+            catch (InvalidJwtException ex)
+            {
+                _logger.LogWarning(ex, "Invalid Google token received");
+                return Unauthorized("Invalid Google Token");
+            }
+        }
+
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
+        {
+            if (string.IsNullOrEmpty(request.AccessToken) || string.IsNullOrEmpty(request.RefreshToken))
+            {
+                return BadRequest("Access token and refresh token are required");
+            }
+
+            ClaimsPrincipal principal;
+            try
+            {
+                principal = _tokenService.GetPrincipalFromExpiredToken(request.AccessToken);
+            }
+            catch (SecurityTokenException ex)
+            {
+                _logger.LogWarning(ex, "Token validation failed during refresh");
+                return Unauthorized("Invalid token");
+            }
+
+            var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                         ?? principal.FindFirst("uid")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var savedRefreshToken = await _tokenRepository.GetRefreshTokenAsync(userId, request.RefreshToken);
+            if (savedRefreshToken == null || savedRefreshToken.IsRevoked || savedRefreshToken.ExpiryDate <= DateTime.UtcNow)
+            {
+                return Unauthorized("Invalid refresh token");
+            }
+
+            var newAccessToken = _tokenService.IssueTokenFromClaims(principal.Claims);
+            var newRefreshToken = _tokenService.GenerateRefreshToken();
+
+            await _tokenRepository.RevokeRefreshTokenAsync(savedRefreshToken);
+            if (Guid.TryParse(userId, out var guid))
+            {
+                await _tokenRepository.SaveRefreshTokenAsync(guid, newRefreshToken);
+            }
+
+            return Ok(new
+            {
+                AccessToken = newAccessToken,
+                token = newAccessToken,
+                RefreshToken = newRefreshToken
+            });
+        }
+
+        [HttpPost("revoke")]
+        [Authorize]
+        public async Task<IActionResult> Revoke([FromBody] string refreshToken)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                         ?? User.FindFirst("uid")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var token = await _tokenRepository.GetRefreshTokenAsync(userId, refreshToken);
+            if (token == null)
+            {
+                return BadRequest("Invalid token");
+            }
+
+            await _tokenRepository.RevokeRefreshTokenAsync(token);
+            return Ok("Token revoked successfully");
+        }
     }
 }
-

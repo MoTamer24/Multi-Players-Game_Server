@@ -1,46 +1,49 @@
-using Microsoft.EntityFrameworkCore;
+using GameServer.Application.Interfaces;
+using GameServer.Auth;
 using GameServer.Auth.Models;
-namespace GameServer.Auth.Services
-{
-     public interface IUserProfileService
-    {
-        Task<UserProfile> CreateGuestProfile(string? displayName = null);
-        Task<UserProfile> FindOrCreateProfile(string provider,string providerId, string email, string name);
-        UserProfile? GetById(Guid id);
-    }
+using Microsoft.EntityFrameworkCore;
 
+namespace GameServer.Infrastructure.Services
+{
     public class UserProfileService : IUserProfileService
     {
-        readonly AppDbContext _db;
-        readonly IConfiguration _cfg;
-        public UserProfileService(AppDbContext db,IConfiguration cfg)
+        private readonly AppDbContext _db;
+        private readonly IConfiguration _cfg;
+
+        public UserProfileService(AppDbContext db, IConfiguration cfg)
         {
             _db = db;
-            _cfg=cfg;
-            }
+            _cfg = cfg;
+        }
 
-        public async Task<UserProfile> CreateGuestProfile(string? displayName = null)
+        public async Task<UserProfile> CreateGuestProfileAsync(string? displayName = null)
         {
             var now = DateTimeOffset.UtcNow;
+            var lifetimeStr = _cfg["Guest:DefaultLifetimeMinutes"] ?? "60";
+            var minutes = int.TryParse(lifetimeStr, out var m) ? m : 60;
+
             var guest = new UserProfile
             {
                 Id = Guid.NewGuid(),
                 Provider = "guest",
                 ProviderId = Guid.NewGuid().ToString(),
-                DisplayName = displayName ?? $"Guest-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}",
+                DisplayName = !string.IsNullOrWhiteSpace(displayName) ? displayName : $"Guest-{now.ToUnixTimeSeconds()}",
                 IsGuest = true,
                 CreatedAt = now,
-                GuestExpiresAt = now.Add(TimeSpan.FromMinutes(int.Parse(_cfg["Guest:DefaultLifetimeMinutes"]!)))
+                GuestExpiresAt = now.Add(TimeSpan.FromMinutes(minutes))
             };
-           await _db.UserProfiles.AddAsync(guest);
-           await _db.SaveChangesAsync();
-           return guest;
+
+            await _db.UserProfiles.AddAsync(guest);
+            await _db.SaveChangesAsync();
+            return guest;
         }
 
+        public async Task<UserProfile?> GetByIdAsync(Guid id)
+        {
+            return await _db.UserProfiles.FindAsync(id);
+        }
 
-        public UserProfile? GetById(Guid id) => _db.UserProfiles.Find(id);
-
-        public async Task<UserProfile> FindOrCreateProfile(string provider,string providerId, string email, string name)
+        public async Task<UserProfile> FindOrCreateProfileAsync(string provider, string providerId, string email, string name)
         {
             var existing = await _db.UserProfiles
                 .FirstOrDefaultAsync(u => u.Provider == provider && u.ProviderId == providerId);

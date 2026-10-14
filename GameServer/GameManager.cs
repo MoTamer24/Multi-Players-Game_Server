@@ -1,108 +1,54 @@
-using System.Collections.Concurrent;
+using GameServer.Application.Interfaces;
+using GameServer.Domain.Entities;
+using GameServer.Domain.Enums;
+
 namespace GameServer
 {
+    /// <summary>
+    /// Facade providing backward compatibility for any existing callers expecting GameManager.
+    /// Internally delegates to modular, testable, and scalable services.
+    /// </summary>
     public class GameManager
     {
-        // Waiting players per game type (keyed by userId)
-        ConcurrentDictionary<GameType, ConcurrentQueue<string>> WaitingPlayers;
+        private readonly IConnectionManager _connectionManager;
+        private readonly IMatchmakingService _matchmakingService;
+        private readonly IGameSessionService _gameSessionService;
 
-
-        // Map userId -> connectionId for currently connected users
-        ConcurrentDictionary<string, string> _userConnections;
-
-        // Games keyed by matchId
-        ConcurrentDictionary<string, IGame> GamesList;
-
-        // Track which match each player is in (userId -> matchId)
-        ConcurrentDictionary<string, string> _playerMatches;
-
-        public GameManager()
+        public GameManager(
+            IConnectionManager connectionManager,
+            IMatchmakingService matchmakingService,
+            IGameSessionService gameSessionService)
         {
-            WaitingPlayers = new();
-            _userConnections = new();
-            GamesList = new();
-            _playerMatches = new();
+            _connectionManager = connectionManager;
+            _matchmakingService = matchmakingService;
+            _gameSessionService = gameSessionService;
         }
 
-        // Connection management
-        // Add a connection for a user (userId -> connectionId)
-        public void AddConnection(string userId, string connectionId)
-        {
-            _userConnections.TryAdd(userId, connectionId);
-        }
+        public void AddConnection(string userId, string connectionId) =>
+            _connectionManager.AddConnection(userId, connectionId);
 
-        // Remove a user's connection record
-        public void RemoveConnection(string userId)
-        {
-            _userConnections.TryRemove(userId, out _);
-        }
+        public void RemoveConnection(string userId) =>
+            _connectionManager.RemoveConnection(userId);
 
-        // Try get the current connectionId for a user
-        public bool TryGetConnectionId(string userId, out string connectionId)
-        {
-            return _userConnections.TryGetValue(userId, out connectionId);
-        }
+        public bool TryGetConnectionId(string userId, out string connectionId) =>
+            _connectionManager.TryGetConnectionId(userId, out connectionId);
 
+        public string? GetMatchIdForConnection(string userIdOrConnectionId) =>
+            _gameSessionService.GetMatchIdForPlayer(userIdOrConnectionId);
 
-        public string? GetMatchIdForConnection(string connectionId)
-        {
-            _playerMatches.TryGetValue(connectionId, out var matchId);
-            return matchId;
-        }
+        public void CreateGame(string matchId, GameType type, string playerId, string opponentId) =>
+            _gameSessionService.CreateGame(matchId, type, playerId, opponentId);
 
-        public void CreateGame(string matchId, GameType type, string playerId, string opponentId)
-        {
-            GamesList.AddOrUpdate(
-                           matchId,
-                          GameFactory.CreateGame(matchId, type, playerId, opponentId),
-                           (key, existingValue) => existingValue
-                                );
+        public IGame? GetGameState(string matchId) =>
+            _gameSessionService.GetGame(matchId);
 
-            // Track which match each player is in
+        public bool IsActive(string userId) =>
+            _gameSessionService.IsPlayerInGame(userId);
 
-            _playerMatches.TryAdd(playerId, matchId);
-            _playerMatches.TryAdd(opponentId, matchId);
-        }
+        public void RemoveGame(string matchId) =>
+            _gameSessionService.RemoveGame(matchId);
 
-        public IGame? GetGameState(string matchId)
-        {
-            GamesList.TryGetValue(matchId, out var GS);
-            return GS;
-        }
-
-        public bool IsActive(string userId)
-        {
-            return _playerMatches.ContainsKey(userId);
-        }
-
-        public void RemoveGame(string matchId)
-        {
-            if (GamesList.TryRemove(matchId, out var game))
-            {
-                // Remove player match associations
-                var playersToRemove = _playerMatches.Where(kv => kv.Value == matchId).Select(kv => kv.Key).ToList();
-                foreach (var player in playersToRemove)
-                {
-                    _playerMatches.TryRemove(player, out _);
-                }
-            }
-        }
-
-        public string? FindMatch(GameType type, string connectionId)
-        {
-            var queue = WaitingPlayers.GetOrAdd(type, _ => new ConcurrentQueue<string>());
-
-            while (queue.TryDequeue(out string? waitingConnectionId))
-            {
-                // Ensure the waiting player is still connected and isn't the same person
-                if (waitingConnectionId != connectionId && _userConnections.ContainsKey(waitingConnectionId))
-                    return waitingConnectionId;
-            }
-
-            queue.Enqueue(connectionId);
-            return null;
-        }
+        public string? FindMatch(GameType type, string playerId) =>
+            _matchmakingService.QueueOrMatch(type, playerId);
     }
 }
-
-
